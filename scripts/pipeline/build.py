@@ -202,11 +202,15 @@ def build(raw, geo, band):
             g = clean(g)
             if g is None:
                 continue
-            cl = max(clusters, key=lambda k: clusters[k].intersection(g).area)
+            # Many areas feed more than one high school (Bridlemile: Lincoln and Wells-Barnett), so keep
+            # every cluster's share; `cluster` is only the largest, for anything needing a single value.
+            shares = {k: c.intersection(g).area / g.area for k, c in clusters.items()}
+            split = [{"name": k, "share": round(v, 2)} for k, v in sorted(shares.items(), key=lambda kv: -kv[1]) if v >= 0.03]
             label, layer = named[key]["label"], named[key]["layer"]
             level = "K-8" if layer == "K-8" else BANDS[band][0]
             suffix = "K-8" if layer == "K-8" else ("Middle School" if band == "68" else "Elementary")
-            feats.append(("area", key, {"name": f"{key} {suffix}", "school_label": label, "cluster": cl, "level": level}, g))
+            feats.append(("area", key, {"name": f"{key} {suffix}", "school_label": label, "cluster": split[0]["name"],
+                                        "clusters": split, "level": level}, g))
 
     out = []
     for _, _, props, g in feats:

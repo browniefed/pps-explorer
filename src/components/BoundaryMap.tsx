@@ -67,6 +67,15 @@ function schoolTip(name: string, scenario: Scenario) {
   return tip
 }
 
+// "Lincoln cluster", or for an area split between high schools:
+// "High school: Lincoln (54% of area) or Wells-Barnett (46%), by address"
+function highSchoolText(p: Record<string, any>) {
+  const split: { name: string; share: number }[] = p.clusters ?? []
+  if (p.level === '9-12' || split.length < 2) return `${p.cluster} cluster`
+  const parts = split.map((c, i) => `${c.name} (${Math.round(c.share * 100)}%${i === 0 ? ' of area' : ''})`)
+  return `High school: ${parts.slice(0, -1).join(', ')} or ${parts.at(-1)}, by address`
+}
+
 const mapLabel = (name: string) => name.replace(/ Elementary$/, '')
 
 export function BoundaryMap({ datasets, scenario, band, compare, position, focusSelection, panelInset, onSelect }: Props) {
@@ -95,7 +104,7 @@ export function BoundaryMap({ datasets, scenario, band, compare, position, focus
         maxNativeZoom: 16,
         attribution: 'Basemap © Esri, HERE, Garmin, © OpenStreetMap contributors · Boundaries traced from PPS scenario maps',
       }).on('tileerror', () => setError('Basemap tiles could not load. Boundaries remain available.')).addTo(m)
-      for (const [name, z] of [['areas', 400], ['compare', 450], ['schools', 600], ['reference', 620], ['labels', 650]] as const) {
+      for (const [name, z] of [['shading', 390], ['areas', 400], ['compare', 450], ['schools', 600], ['reference', 620], ['labels', 650]] as const) {
         m.createPane(name).style.zIndex = String(z)
       }
       m.getPane('reference')!.style.pointerEvents = 'none'
@@ -113,13 +122,24 @@ export function BoundaryMap({ datasets, scenario, band, compare, position, focus
     if (!ready || !lf || !m || !datasets) return
     const d = datasets[`${scenario}_${band}`]
     const hs = band === '912'
+    const added: Leaflet.Layer[] = []
+    // Shading is always the scenario's high school areas, drawn under the K-5 / 6-8 outlines the way
+    // PPS's maps do it: an elementary or middle area that feeds two high schools shows both colours.
+    if (!hs) {
+      added.push(lf.geoJSON(datasets[`${scenario}_912`].areas, {
+        pane: 'shading',
+        interactive: false,
+        style: (f) => ({ stroke: false, fillColor: CLUSTERS[f?.properties?.cluster] ?? '#888', fillOpacity: 0.22 }),
+      }).addTo(m))
+    }
     const style = (f?: Feature): Leaflet.PathOptions => ({
       pane: 'areas',
       color: hs ? '#00538b' : '#26323b',
       weight: hs ? 3 : 1.5,
       opacity: 0.85,
-      fillColor: CLUSTERS[f?.properties?.cluster] ?? '#888',
-      fillOpacity: 0.22,
+      // K-5 / 6-8 areas keep an invisible fill so hovering and clicking anywhere inside still works
+      fillColor: hs ? CLUSTERS[f?.properties?.cluster] ?? '#888' : '#17232c',
+      fillOpacity: hs ? 0.22 : 0,
       dashArray: f?.properties?.level === 'K-8' ? '6 4' : undefined,
     })
     const areas: Leaflet.GeoJSON = lf.geoJSON(d.areas, {
@@ -129,13 +149,13 @@ export function BoundaryMap({ datasets, scenario, band, compare, position, focus
         const tip = document.createElement('span')
         const strong = document.createElement('strong')
         strong.textContent = p.name
-        tip.append(strong, document.createElement('br'), `${p.cluster} cluster · ${p.area_sqmi} sq mi`)
+        tip.append(strong, document.createElement('br'), `${highSchoolText(p)} · ${p.area_sqmi} sq mi`)
         layer.bindTooltip(tip, { sticky: true, className: 'hover-tip' })
-        layer.on('mouseover', () => (layer as Leaflet.Path).setStyle({ fillOpacity: 0.42, weight: hs ? 4 : 2.5 }))
+        layer.on('mouseover', () => (layer as Leaflet.Path).setStyle(hs ? { fillOpacity: 0.42, weight: 4 } : { fillOpacity: 0.12, weight: 2.5 }))
         layer.on('mouseout', () => areas.resetStyle(layer))
       },
     }).addTo(m)
-    const added: Leaflet.Layer[] = [areas]
+    added.push(areas)
 
     if (compare && scenario !== 'sq') {
       added.push(lf.geoJSON(datasets[`sq_${band}`].areas, {

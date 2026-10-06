@@ -80,3 +80,11 @@ test('areas stop at the state line in the Columbia instead of reaching the Washi
     for (const p of waterNearVancouver) assert.equal(lookup(fc, p).length, 0, `${s}_${b} covers ${p}`)
   }
 })
+
+test('areas that feed two high schools keep both (matches the city boundary data)', () => {
+  const split = (k, name) => JSON.parse(readFileSync(`public/data/${k}.geojson`)).features
+    .find((f) => f.properties.name === name).properties.clusters.map((c) => c.name).sort()
+  assert.deepEqual(split('sq_k5', 'Bridlemile Elementary'), ['Lincoln', 'Wells-Barnett'])
+  assert.deepEqual(split('sq_k5', 'Whitman Elementary'), ['Cleveland', 'Franklin'])
+  assert.deepEqual(split('sq_68', 'Brentwood Middle School'), ['Cleveland', 'Franklin'])
+})
