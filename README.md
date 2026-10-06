@@ -11,7 +11,7 @@ npm run dev
 
 Open http://localhost:3000. Node 22.12+ is required. The initial version has scenario toggles, three grade levels, a street basemap, address geocoding, and provisional extracted boundary overlays. Dependencies have not yet installed in the agent environment because npm registry DNS is blocked. There is no lockfile yet; commit the generated package-lock.json after a successful install.
 
-For a preview without npm dependencies, run `python3 scripts/preview.py` or double-click `Start Local Preview.command`. This serves the Leaflet preview on localhost and opens your browser. Do not open it as `file://`: OSM tile requests require a valid HTTP Referer. This standalone preview uses CDN Leaflet and OpenStreetMap tiles. The Start app imports Leaflet through npm.
+Double-click `Start Local Preview.command` to install dependencies if needed and run the TanStack Start development server. Open http://localhost:3000. This is the primary local preview; Leaflet is imported through npm. The old standalone HTML remains an archived fallback and is not the TanStack application.
 
 ## Validate
 
