@@ -1,0 +1,50 @@
+{
+ "scenarios": {
+  "sq": "Status Quo",
+  "a": "Scenario A",
+  "b": "Scenario B"
+ },
+ "bands": {
+  "k5": "K-5",
+  "68": "6-8",
+  "912": "9-12"
+ },
+ "layers": {
+  "sq_k5": {
+   "areas": 53,
+   "schools": 58
+  },
+  "sq_68": {
+   "areas": 23,
+   "schools": 28
+  },
+  "sq_912": {
+   "areas": 8,
+   "schools": 10
+  },
+  "a_k5": {
+   "areas": 37,
+   "schools": 58
+  },
+  "a_68": {
+   "areas": 15,
+   "schools": 21
+  },
+  "a_912": {
+   "areas": 8,
+   "schools": 9
+  },
+  "b_k5": {
+   "areas": 40,
+   "schools": 58
+  },
+  "b_68": {
+   "areas": 15,
+   "schools": 21
+  },
+  "b_912": {
+   "areas": 8,
+   "schools": 9
+  }
+ }
+}

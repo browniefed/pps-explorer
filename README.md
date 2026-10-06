@@ -9,7 +9,14 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. Node 22.12+ is required. The initial version has a single scenario selector, three grade levels, a street basemap, address geocoding, click-to-select locations, and a pathway panel comparing all nine scenario/grade combinations. Dependencies are installed. Type checking, lookup/data tests and the production build pass.
+Open http://localhost:3000. Node 22.12+ is required. The map fills the window with a floating panel (a bottom sheet on phones):
+
+- Scenario (Status quo / A / B) and grade band (K–5 / 6–8 / 9–12) switches; areas are filled by high-school cluster using the PPS legend colours, K-8 areas dashed
+- Optional dotted status-quo lines over Scenario A or B
+- Address search (Esri geocoder) or click anywhere: a table shows the school for every scenario and grade band at that spot, with changes from status quo highlighted; points on a boundary line fall back to the nearest area within 150 m and are flagged
+- School markers, area labels when zoomed in, hover details
+- The view (scenario, grades, comparison, selected point) is kept in the URL hash, so a lookup can be shared as a link
+- Links to the PPS board documents and the original PDFs for the visible grade band
 
 Double-click `Start Local Preview.command` to install dependencies if needed and run the TanStack Start development server. Open http://localhost:3000. This is the primary local preview; Leaflet is imported through npm. The old standalone HTML remains an archived fallback and is not the TanStack application.
 
@@ -29,13 +36,16 @@ The Vite build generates `src/routeTree.gen.ts` before type checking. Data and l
 npm run data:extract
 ```
 
-The extraction pipeline reads the nine original PDFs in public/maps and uses Python plus macOS PDFKit (Swift) to obtain geometry and school labels. It decodes PDF object streams, tracks drawing transforms, extracts attendance-boundary vector subpaths, and converts page coordinates using embedded geographic control points and Oregon North Lambert Conformal Conic. PDFs without geographic metadata use the status-quo high-school viewport based on the previously checked common page layout. Source SHA-256 and control points are recorded in every output. Original PDFs are in `public/maps`; previous viewer is in `public/original`.
+`scripts/pipeline/` (Python: PyMuPDF, Shapely, pyproj) reads the nine PDFs in `public/maps` and writes `public/data/{sq,a,b}_{k5,68,912}.geojson` plus a `_schools` point layer for each. One-time setup: `python3 -m venv scripts/pipeline/.venv && scripts/pipeline/.venv/bin/pip install -r scripts/pipeline/requirements.txt`.
 
-**Extraction is provisional.** These are vector subpaths, not verified school catchments. School names are matched from PDF labels contained by the extracted polygons. Ambiguous or missing labels stay unresolved; no nearest-school fallback is used. Holes/disconnected parts are not fully classified and skyline inset geometry is not reconstructed. Clicks and address searches show estimated school pathways for all scenarios and grade levels, independently of the visible map layer. No current GIS dataset is substituted for PPS's proposed baseline.
+- `extract.py`: vector paths in page coordinates: high-school cluster fills (named from the legend swatches), K-5 / 6-8 outlines, pre-dashed K-8 outlines (dash segments chained back into rings), and school labels paired with their icons. The NW inset is extracted as its own frame.
+- `gpts.py`: page → NAD83(HARN) Oregon North transforms from the GeoPDF viewports (`/VP` `/GPTS`) embedded in `current-high.pdf`, one for the main map and one for the inset. All eleven PDFs share this page layout; only some carry the tags. Corner residuals are 3 m (main) and 9 m (inset), which is the rounding of the stored control points.
+- `build.py`: rings → polygons, clipped to each frame; inset geometry fills only what the main map doesn't show. Each area is named from the school icon inside it (neighbourhood school preferred over an immersion program sharing the area) and assigned the cluster it overlaps most.
+- `qa.py`: per-layer coverage against the district (union of 9-12 areas). There are no overlaps. The uncovered remainder is the Willamette River, which K-5 and 6-8 areas stop short of, and hairline slivers between neighbours.
 
-Before enabling school assignment: verify georeferencing against independent street intersections; separate exterior rings/holes; deduplicate outlines; extract inset coverage; match each polygon to its attendance school; validate scenario coverage and known addresses. Then mark approved datasets reviewed, implement proximity-to-boundary checks, and populate the scenario-by-grade results table. No hypothetical future boundary projections are included.
+Areas come from the PDFs' own vector paths and georeferencing, so positions are accurate to a few metres; still, confirm addresses that sit right on a line with PPS. Immersion-only programs don't get their own area. Original PDFs are in `public/maps`; the previous viewer is in `public/original`.
 
-Address searches go directly from the browser to Esri's geocoder and are not saved by the app. Public street tiles come from OpenStreetMap; attribution is displayed.
+Address searches go directly from the browser to Esri's geocoder and are not saved by the app. The basemap is Esri World Light Gray Canvas (base + reference labels); attribution is displayed.
 
 ## Deploy after local review
 
@@ -51,7 +61,3 @@ This targets Workers, not the old Pages ZIP. No database is needed for static bo
 - [PPS board map attachments, item 8](https://meetings.boardbook.org/Public/Agenda/915?meeting=769955)
 - [Cloudflare TanStack Start integration](https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/)
 - [Leaflet GeoJSON documentation](https://leafletjs.com/examples/geojson/)
-
-Tile policy: https://operations.osmfoundation.org/policies/tiles/ . The viewer uses the required HTTPS URL, visible attribution, browser caching, an explicit referrer policy and viewport-only tile requests. File previews do not request OSM tiles. No proxy, header spoofing, bulk download or cache bypass is used.
-
-Elementary extraction QA: filled school-marker glyphs are excluded; graphics state restores both transforms and stroke colors. Scenario A contains 35 main-map catchment paths and B contains 38, rather than the old erroneous 66/72 features. Nested elementary rings were checked and none were found in these extracts. Counts exclude unresolved northwest inset coverage.

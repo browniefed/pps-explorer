@@ -9,8 +9,12 @@ export const Route = createRootRoute({
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { name: 'referrer', content: 'strict-origin-when-cross-origin' },
       { title: 'PPS School Explorer' },
+      { name: 'description', content: 'Compare Portland Public Schools attendance boundaries for 2027–28: status quo, Scenario A and Scenario B.' },
     ],
     links: [
+      { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+      { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
+      { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700&display=swap' },
       { rel: 'stylesheet', href: stylesheet },
       { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
     ],

@@ -9,3 +9,5 @@ dist/
 
 __pycache__/
 src/routeTree.gen.ts
+scripts/pipeline/.venv/
+scripts/pipeline/.work/

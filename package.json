@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "cf-typegen": "wrangler types",
-    "data:extract": "python3 scripts/extract_boundaries.py public/maps && swift -module-cache-path /tmp/pps-swift-cache scripts/extract_labels.swift public/maps 2>/tmp/pps-pdfkit.log && python3 scripts/name_boundaries.py"
+    "data:extract": "scripts/pipeline/run.sh public/maps"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.147.3",
