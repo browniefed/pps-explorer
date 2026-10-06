@@ -1,8 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type PointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type PointerEvent } from 'react'
 import type { FeatureCollection } from 'geojson'
 import { BoundaryMap, CLUSTERS, type Layer } from '../components/BoundaryMap'
 import { assignmentsAt, bands, scenarios, shortName, type Assignment, type Band, type Scenario } from '../lib/assignments.mjs'
+import { describe, digest, schoolKey, spotNotes, type ChangeEvent } from '../lib/changes.mjs'
+import { SUMMARY } from '../lib/changes-data.mjs'
 
 export const Route = createFileRoute('/')({ component: Home })
 
@@ -71,6 +73,64 @@ function Cell({ a }: { a: Assignment }) {
     <td className={cls || undefined} title={a.status === 'near-boundary' ? 'This spot is on a boundary line; nearest area shown.' : undefined}>
       {name}{a.status === 'near-boundary' && ' *'}
     </td>
+  )
+}
+
+const pct = (x: number) => `${Math.round(x * 100)}%`
+
+// School names in a change list are buttons that jump to that school on the map.
+function SchoolLinks({ names, onGo }: { names: string[]; onGo: (name: string) => void }) {
+  return <>{names.map((n, i) => (
+    <span key={n}>{i > 0 && (i === names.length - 1 ? ' and ' : ', ')}<button type="button" className="link" onClick={() => onGo(n)}>{n}</button></span>
+  ))}</>
+}
+
+function ChangeItem({ e, onGo }: { e: ChangeEvent; onGo: (name: string) => void }) {
+  switch (e.kind) {
+    case 'close':
+      return <li><SchoolLinks names={[e.school]} onGo={onGo} />{e.to && <> → <SchoolLinks names={e.to} onGo={onGo} /></>}{e.detail && <span className="detail"> {e.detail}</span>}</li>
+    case 'program':
+      return <li>{e.program}: <SchoolLinks names={e.from} onGo={onGo} /> → <SchoolLinks names={[e.to]} onGo={onGo} />{e.detail && <span className="detail"> {e.detail}</span>}</li>
+    case 'grades':
+      return <li><SchoolLinks names={[e.school]} onGo={onGo} /> 6–8 → <SchoolLinks names={[e.to]} onGo={onGo} /></li>
+    default:
+      return <li>{describe(e)}</li>
+  }
+}
+
+function Changes({ scenario, onGo }: { scenario: Scenario; onGo: (name: string) => void }) {
+  const sum = SUMMARY[scenario]
+  if (scenario === 'sq') {
+    return (
+      <section className="changes">
+        <h2>What changes in status quo</h2>
+        <p className="hint">Nothing: no schools close and no boundaries change. PPS projects {pct(sum.studentsInSustainableSchools)} of students would attend a school above its sustainability threshold by 2031–32.</p>
+      </section>
+    )
+  }
+  const d = digest(scenario)
+  const groups: [string, ChangeEvent[]][] = [
+    [`Schools closing (${d.closures.length})`, d.closures],
+    ['Program moves', d.programs],
+    ['Grades 6–8 move (school becomes K–5)', d.grades],
+    ['Other changes', d.notes],
+  ]
+  return (
+    <section className="changes">
+      <h2>What changes in {SCENARIO_NAMES[scenario]}</h2>
+      <p className="hint">
+        {sum.closures} closures, {sum.boundaryChanges} schools with boundary changes, about {pct(sum.studentsChangingSchools)} of K–8 students
+        change schools. PPS projects {pct(sum.studentsInSustainableSchools)} of students would attend a school above its sustainability
+        threshold by 2031–32 (status quo: {pct(SUMMARY.sq.studentsInSustainableSchools)}).
+      </p>
+      {groups.map(([title, events]) => events.length > 0 && (
+        <details key={title}>
+          <summary>{title}</summary>
+          <ul className="change-list">{events.map((e, i) => <ChangeItem key={i} e={e} onGo={onGo} />)}</ul>
+        </details>
+      ))}
+      <p className="hint">From the PPS board memo and regional summaries for October 6, 2026.</p>
+    </section>
   )
 }
 
@@ -188,6 +248,28 @@ function Home() {
   const areas = datasets && Object.fromEntries(Object.entries(datasets).map(([k, v]) => [k, v.areas]))
   const results = position && areas ? assignmentsAt(areas, [position[1], position[0]]) : null
   const anyNear = results ? scenarios.some((s) => bands.some((b) => results[s][b].status === 'near-boundary')) : false
+  // which schools have an attendance area on each map, to explain schools that stay open without one
+  const areaNames = useMemo(() => Object.fromEntries(Object.entries(datasets ?? {}).map(([k, v]) =>
+    [k, new Set(v.areas.features.map((f) => schoolKey(String(f.properties?.name ?? ''))))])), [datasets])
+  const notes = spotNotes(scenario, results, areaNames)
+
+  // Jump to a school named in the change lists: select its location so the lookup explains it.
+  const goToSchool = (name: string) => {
+    if (!datasets) return
+    const key = schoolKey(name)
+    for (const k of [`${scenario}_k5`, `${scenario}_68`, `sq_k5`, `sq_68`, `sq_912`]) {
+      const f = datasets[k]?.schools.features.find((x) => schoolKey(String(x.properties?.name ?? '')) === key)
+      if (f && f.geometry.type === 'Point') {
+        const [lng, lat] = f.geometry.coordinates
+        setPosition([lat, lng])
+        setFocusSelection(true)
+        setLocationName(`${name} (school location)`)
+        setSheet((s) => (s === 'peek' ? 'half' : s))
+        body.current?.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
+    }
+  }
 
   async function search(e: FormEvent) {
     e.preventDefault()
@@ -276,8 +358,18 @@ function Home() {
             </table>
             <p className="hint">Highlighted cells differ from status quo.</p>
             {anyNear && <p className="hint">* This spot sits on a boundary line, so the nearest area is shown. Check with PPS.</p>}
+            {scenario === 'sq'
+              ? <p className="hint">Choose Scenario A or B to see what changes for these schools.</p>
+              : notes.length > 0 && (
+                <div className="spot-notes">
+                  <h3>What this means in {SCENARIO_NAMES[scenario]}</h3>
+                  <ul>{notes.map((n) => <li key={n.school + n.text}><strong>{n.school}:</strong> {n.text}</li>)}</ul>
+                </div>
+              )}
           </section>
         )}
+
+        <Changes scenario={scenario} onGo={goToSchool} />
 
         <section className="legend">
           <h2>High school cluster</h2>
@@ -299,11 +391,18 @@ function Home() {
                 </a>
               </li>
             ))}
+            <li>
+              <a href="https://ppsdata.info" target="_blank" rel="noreferrer">ppsdata.info</a> by Alex Meub
+              (<a href="https://github.com/meub/pps-data" target="_blank" rel="noreferrer">pps-data</a>), which pointed us to the board
+              packet and the City of Portland boundary data used to check these maps
+            </li>
           </ul>
           <p>
             Boundaries are traced from the vector paths in PPS’s scenario PDFs (rightsizing model 2026.09.24) and placed using the
             PDFs’ own embedded map coordinates, so positions are accurate to a few metres. Area names come from the school
-            labels on each map. Confirm addresses near a boundary with PPS; lottery and immersion placements are separate.
+            labels on each map. School changes come from the PPS board memo and regional summaries for October 6, 2026.
+            Status quo areas match the City of Portland’s school boundary data for 98% of the district at K–5 and 9–12.
+            Confirm addresses near a boundary with PPS; lottery and immersion placements are separate.
           </p>
           <p>Address searches go straight from your browser to Esri’s geocoder and aren’t saved by this site.</p>
         </footer>

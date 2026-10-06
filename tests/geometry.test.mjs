@@ -59,3 +59,24 @@ test('status quo keeps its K-8 areas, including the Skyline inset', () => {
   const k8 = k5.filter((f) => f.properties.level === 'K-8').map((f) => f.properties.name)
   for (const name of ['Skyline K-8', 'Astor K-8', 'Vernon K-8', 'Faubion K-8']) assert(k8.includes(name), `missing ${name}`)
 })
+
+test('basemap features never leak into areas: the only hole is the Maywood Park enclave', () => {
+  for (const s of scenarios) for (const b of bands) {
+    const holes = []
+    for (const f of JSON.parse(readFileSync(`public/data/${s}_${b}.geojson`)).features)
+      for (const poly of f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates)
+        for (const ring of poly.slice(1)) holes.push([f.properties.name, ring])
+    assert(holes.length <= 1, `${s}_${b} has ${holes.length} holes: ${holes.map((h) => h[0]).join(', ')}`)
+    // Maywood Park (its own city, not in PPS) sits around 45.54 N, 122.56 W
+    for (const [, ring] of holes) assert(ring.some(([lon, lat]) => Math.abs(lat - 45.5416) < 0.005 && Math.abs(lon + 122.5638) < 0.005))
+  }
+})
+
+test('areas stop at the state line in the Columbia instead of reaching the Washington shore', () => {
+  // river north of the city's district edge (45.618 N at 122.6755 W, 45.613 N at 122.66 W)
+  const waterNearVancouver = [[-122.6755, 45.6205], [-122.66, 45.6195]]
+  for (const s of scenarios) for (const b of bands) {
+    const fc = JSON.parse(readFileSync(`public/data/${s}_${b}.geojson`))
+    for (const p of waterNearVancouver) assert.equal(lookup(fc, p).length, 0, `${s}_${b} covers ${p}`)
+  }
+})

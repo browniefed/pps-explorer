@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type * as Leaflet from 'leaflet'
 import type { Feature, FeatureCollection, Polygon, MultiPolygon } from 'geojson'
 import type { Band, Scenario } from '../lib/assignments.mjs'
+import { describe, eventsFor, schoolKey } from '../lib/changes.mjs'
 
 // Fill colours taken from the PPS map legend.
 export const CLUSTERS: Record<string, string> = {
@@ -48,6 +49,22 @@ function labelPoint(f: Feature): [number, number] {
     if (Math.abs(a) > bestArea) { bestArea = Math.abs(a); best = [cy / (3 * a), cx / (3 * a)] }
   }
   return best
+}
+
+// School marker tooltip: the map label plus what the board memo says happens to the school here.
+function schoolTip(name: string, scenario: Scenario) {
+  const tip = document.createElement('div')
+  const title = document.createElement('strong')
+  title.textContent = name
+  tip.append(title)
+  if (scenario === 'sq') return tip
+  const key = schoolKey(name)
+  for (const e of eventsFor(scenario, name)) {
+    const p = document.createElement('p')
+    p.textContent = describe(e, key)
+    tip.append(p)
+  }
+  return tip
 }
 
 const mapLabel = (name: string) => name.replace(/ Elementary$/, '')
@@ -138,7 +155,7 @@ export function BoundaryMap({ datasets, scenario, band, compare, position, focus
           weight: 1.5,
           fillColor: kind === 'focus' ? '#6b1f3d' : '#ffffff',
           fillOpacity: 1,
-        }).bindTooltip(String(f.properties?.name ?? ''), { className: 'hover-tip' })
+        }).bindTooltip(schoolTip(String(f.properties?.name ?? ''), scenario), { className: 'hover-tip school-tip' })
       },
     }).addTo(m))
 

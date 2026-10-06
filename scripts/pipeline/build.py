@@ -1,6 +1,10 @@
 """Build GeoJSON layers from extracted raw page features + georeference.
 
-Usage: python -I build.py <raw_dir> <georef.json> <out_dir>
+Usage: python -I build.py <raw_dir> <georef.json> <out_dir> [district.geojson]
+
+With a district file (the City of Portland school boundary cells), every area is clipped to the
+district's outer boundary. The scenario PDFs draw some areas across the Columbia to the Washington
+shore; scenarios don't change the district boundary, so anything outside it is drawing slop.
 """
 import json
 import re
@@ -9,7 +13,7 @@ import sys
 import numpy as np
 from pyproj import Transformer
 from shapely import affinity
-from shapely.geometry import MultiPolygon, Point, Polygon, box, mapping
+from shapely.geometry import MultiPolygon, Point, Polygon, box, mapping, shape
 from shapely.ops import transform as shp_transform, unary_union
 
 sys.path.insert(0, __file__.rsplit("/", 1)[0])
@@ -81,11 +85,20 @@ def polys_only(g):
     return g
 
 
+DISTRICT = None  # set in main() when a district file is given
+DISTRICT_TOLERANCE = 0.0004  # degrees, about 30-45 m: keeps legitimate edges that differ by a few metres
+
+
 def clean(g, tol=0.00002):
-    g = polys_only(g.buffer(0)).simplify(tol, preserve_topology=True)
+    g = polys_only(g.buffer(0))
+    if DISTRICT is not None:
+        g = polys_only(g.intersection(DISTRICT))
+    g = g.simplify(tol, preserve_topology=True)
     if g.geom_type == "Polygon":
         g = MultiPolygon([g])
-    parts = [p for p in g.geoms if p.area > 2e-8]  # drop slivers (~200 m2)
+    # drop slivers (~200 m2) and pinhole interior rings (stray inner subpaths in the PDF fills); real
+    # enclaves such as Maywood Park are about 6x larger than the hole cutoff (~4,000 m2)
+    parts = [Polygon(p.exterior, [r for r in p.interiors if Polygon(r).area >= 5e-7]) for p in g.geoms if p.area > 2e-8]
     return MultiPolygon(parts) if parts else None
 
 
@@ -229,7 +242,11 @@ def area_sqmi(g):
     return shp_transform(lambda x, y, z=None: _eq.transform(x, y), g).area / 2589988.11
 
 
-def main(raw_dir, georef_path, out_dir):
+def main(raw_dir, georef_path, out_dir, district_path=None):
+    global DISTRICT
+    if district_path:
+        cells = json.load(open(district_path))["features"]
+        DISTRICT = unary_union([shape(c["geometry"]).buffer(0) for c in cells]).buffer(DISTRICT_TOLERANCE)
     geo = Geo(json.load(open(georef_path)))
     index = {"scenarios": SCENARIOS, "bands": {k: v[0] for k, v in BANDS.items()}, "layers": {}}
     for sc in SCENARIOS:

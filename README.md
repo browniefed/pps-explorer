@@ -47,6 +47,22 @@ Areas come from the PDFs' own vector paths and georeferencing, so positions are 
 
 Address searches go directly from the browser to Esri's geocoder and are not saved by the app. The basemap is Esri World Light Gray Canvas (base + reference labels); attribution is displayed.
 
+### School changes (closures, program moves, grade changes)
+
+`src/lib/changes-data.mjs` transcribes the proposed changes for Scenarios A and B from the PPS board packet for October 6, 2026: the board memo ("Rightsizing Update: Scenario Release", Oct 5) and the regional summaries and district-wide comparison (Oct 3–4). It covers each closure and where its students go, immersion and other program moves, K–8 schools whose grades 6–8 move, and notes such as Sunnyside's focus option ending and Skyline's high school changing to Roosevelt. `src/lib/changes.mjs` turns these into the lookup notes, the "What changes" panel section and the school marker tooltips. It also flags open schools that lose their own attendance area on a scenario map. For example, Rigler stays open and receives Scott's Spanish immersion program, but in Scenarios A and B its area is part of Scott's.
+
+`tests/changes.test.mjs` checks the transcription against the maps: every school it names appears on a map, and the closures match the "School Closed" labels exactly (14 in A, 11 in B).
+
+### Checking against the City of Portland's boundary data
+
+`scripts/pipeline/verify_city.py` compares our status quo areas with the City of Portland's `School_Boundaries` layer (snapshot in `scripts/pipeline/reference/`, last edited Nov 2025). Both datasets name the same school for 98.2% of the district at K–5, 94.1% at 6–8 and 98.2% at 9–12. The known differences are:
+
+- **6–8, Beaumont/Roseway Heights.** The PPS status quo map puts the Cully/airport strip in Roseway Heights; the city layer puts it in Beaumont. Our data follows the PPS map.
+- **9–12, Jefferson.** The city layer splits Jefferson into "Jefferson / Grant", "Jefferson / McDaniel" and "Jefferson / Roosevelt" choice zones, which the PPS cluster maps don't show.
+- **Naming.** The city layer uses older or shorter names (Lee for Sunrise, Lane for Brentwood, Tubman, Ida B. Wells for Wells-Barnett, Bridger, Sunnyside); the script aliases them.
+
+Thanks to [ppsdata.info](https://ppsdata.info) by Alex Meub ([meub/pps-data](https://github.com/meub/pps-data), MIT), whose repository pointed us to the board packet and the city boundary layer.
+
 ## Deploy after local review
 
 ```sh
@@ -59,5 +75,7 @@ This targets Workers, not the old Pages ZIP. No database is needed for static bo
 ## Sources
 
 - [PPS board map attachments, item 8](https://meetings.boardbook.org/Public/Agenda/915?meeting=769955)
+- [ppsdata.info](https://ppsdata.info) / [meub/pps-data](https://github.com/meub/pps-data) by Alex Meub
+- [City of Portland School_Boundaries layer](https://services.arcgis.com/quVN97tn06YNGj9s/arcgis/rest/services/School_Boundaries/FeatureServer/0)
 - [Cloudflare TanStack Start integration](https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/)
 - [Leaflet GeoJSON documentation](https://leafletjs.com/examples/geojson/)

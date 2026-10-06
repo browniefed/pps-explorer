@@ -90,7 +90,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 .lookup td { padding: 6px 4px; border-top: 1px solid var(--line); vertical-align: top; }
 .lookup tbody th { color: var(--ink); font-weight: 700; border-top: 1px solid var(--line); }
 .lookup tr.current th, .lookup tr.current td { background: var(--pps-tint); }
-.lookup td.changed { background: var(--changed); color: var(--changed-ink); font-weight: 700; }
+.lookup td.changed, .lookup tr.current td.changed { background: var(--changed); color: var(--changed-ink); font-weight: 700; }
 .lookup td.none { color: var(--ink-soft); }
 .lookup .hint { margin-top: 6px; }
 .location-name { overflow-wrap: anywhere; margin-bottom: 4px; }
@@ -154,3 +154,20 @@ footer p { margin: 0; font-size: 12px; color: var(--ink-soft); }
 @media (prefers-reduced-motion: reduce) {
   .panel { transition: none; }
 }
+
+/* lookup notes and the "What changes" section */
+.spot-notes { margin-top: 10px; }
+.spot-notes h3, .changes h2 { font-size: 15px; font-weight: 700; margin: 0 0 6px; }
+.spot-notes ul, .change-list { margin: 0; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+.changes { display: flex; flex-direction: column; gap: 8px; }
+.changes details { border-top: 1px solid var(--line); padding-top: 8px; }
+.changes summary { cursor: pointer; font-weight: 500; font-size: 14px; }
+.changes summary:focus-visible { outline: 3px solid var(--pps); outline-offset: 2px; }
+.change-list { margin-top: 8px; }
+.change-list .detail { color: var(--ink-soft); }
+button.link {
+  font: inherit; color: var(--pps); background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.leaflet-tooltip.school-tip { max-width: 280px; white-space: normal; }
+.school-tip p { margin: 4px 0 0; }

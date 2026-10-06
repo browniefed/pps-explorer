@@ -173,12 +173,23 @@ def main(pdf, out):
     page = pymupdf.open(pdf)[0]
     drawings = page.get_drawings()
     leg = legend(page, drawings)
+    # The cluster fills are the first layer drawn in each map frame, right after the frame's white
+    # background. Basemap features can share a legend colour (the airport runways are Grant's grey),
+    # so only fills in that opening block count as clusters.
+    frame_start = {}
+    for x in drawings:
+        r = x["rect"]
+        for name, f in (("main", MAIN_FRAME), ("inset", INSET_FRAME)):
+            if name not in frame_start and x.get("fill") == (1.0, 1.0, 1.0) and all(abs(a - b) < 1 for a, b in zip((r.x0, r.y0, r.x1, r.y1), f)):
+                frame_start[name] = x["seqno"]
+    cluster_block = 4 * len(leg)
     clusters, areas = [], []
     for x in drawings:
         fr = which_frame(x["rect"])
         if fr is None:
             continue
-        if x.get("fill") and x["type"] in ("f", "fs") and rc(x["fill"]) in leg and len(x["items"]) >= 20:
+        in_block = fr in frame_start and 0 < x["seqno"] - frame_start[fr] <= cluster_block
+        if x.get("fill") and x["type"] in ("f", "fs") and rc(x["fill"]) in leg and len(x["items"]) >= 20 and in_block:
             clusters.append({"cluster": leg[rc(x["fill"])], "color": rc(x["fill"]), "frame": fr,
                              "rings": path_rings(x["items"])})
         elif x["type"] == "s" and rc(x.get("color")) in LAYER_COLORS and (x.get("width") or 0) >= 2.5:
