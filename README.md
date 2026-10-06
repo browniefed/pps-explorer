@@ -11,7 +11,7 @@ npm run dev
 
 Open http://localhost:3000. Node 22.12+ is required. The initial version has scenario toggles, three grade levels, a street basemap, address geocoding, and provisional extracted boundary overlays. Dependencies have not yet installed in the agent environment because npm registry DNS is blocked. There is no lockfile yet; commit the generated package-lock.json after a successful install.
 
-For a dependency-free preview of the actual Leaflet layers, open `public/local-preview.html` in a browser with internet access. This standalone preview uses CDN Leaflet and OpenStreetMap tiles. The Start app imports Leaflet through npm.
+For a preview without npm dependencies, run `python3 scripts/preview.py` or double-click `Start Local Preview.command`. This serves the Leaflet preview on localhost and opens your browser. Do not open it as `file://`: OSM tile requests require a valid HTTP Referer. This standalone preview uses CDN Leaflet and OpenStreetMap tiles. The Start app imports Leaflet through npm.
 
 ## Validate
 
@@ -51,3 +51,5 @@ This targets Workers, not the old Pages ZIP. No database is needed for static bo
 - [PPS board map attachments, item 8](https://meetings.boardbook.org/Public/Agenda/915?meeting=769955)
 - [Cloudflare TanStack Start integration](https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/)
 - [Leaflet GeoJSON documentation](https://leafletjs.com/examples/geojson/)
+
+Tile policy: https://operations.osmfoundation.org/policies/tiles/ . The viewer uses the required HTTPS URL, visible attribution, browser caching, an explicit referrer policy and viewport-only tile requests. File previews do not request OSM tiles. No proxy, header spoofing, bulk download or cache bypass is used.
