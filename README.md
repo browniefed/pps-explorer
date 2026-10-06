@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. Node 22.12+ is required. The initial version has scenario toggles, three grade levels, a street basemap, address geocoding, and provisional extracted boundary overlays. Dependencies have not yet installed in the agent environment because npm registry DNS is blocked. There is no lockfile yet; commit the generated package-lock.json after a successful install.
+Open http://localhost:3000. Node 22.12+ is required. The initial version has a single scenario selector, three grade levels, a street basemap, address geocoding, click-to-select locations, and a pathway panel comparing all nine scenario/grade combinations. Dependencies are installed. Type checking, lookup/data tests and the production build pass.
 
 Double-click `Start Local Preview.command` to install dependencies if needed and run the TanStack Start development server. Open http://localhost:3000. This is the primary local preview; Leaflet is imported through npm. The old standalone HTML remains an archived fallback and is not the TanStack application.
 
@@ -29,9 +29,9 @@ The Vite build generates `src/routeTree.gen.ts` before type checking. Data and l
 npm run data:extract
 ```
 
-The extractor reads the previous viewer's nine grade-level PDFs. It decodes PDF object streams, tracks drawing transforms, extracts attendance-boundary vector subpaths, and converts page coordinates using embedded geographic control points and Oregon North Lambert Conformal Conic. PDFs without geographic metadata use the status-quo high-school viewport based on the previously checked common page layout. Source SHA-256 and control points are recorded in every output. Original PDFs are in `public/maps`; previous viewer is in `public/original`.
+The extraction pipeline reads the nine original PDFs in public/maps and uses Python plus macOS PDFKit (Swift) to obtain geometry and school labels. It decodes PDF object streams, tracks drawing transforms, extracts attendance-boundary vector subpaths, and converts page coordinates using embedded geographic control points and Oregon North Lambert Conformal Conic. PDFs without geographic metadata use the status-quo high-school viewport based on the previously checked common page layout. Source SHA-256 and control points are recorded in every output. Original PDFs are in `public/maps`; previous viewer is in `public/original`.
 
-**Extraction is provisional.** These are vector subpaths, not verified school catchments. School names are not encoded on paths, holes/disconnected parts are not classified, and skyline inset geometry is not reconstructed. Unnamed features stay explicitly unverified. The UI does not assert school assignments; geocoded addresses only place a marker and report intersecting provisional shapes. No current GIS dataset is substituted for PPS's proposed baseline.
+**Extraction is provisional.** These are vector subpaths, not verified school catchments. School names are matched from PDF labels contained by the extracted polygons. Ambiguous or missing labels stay unresolved; no nearest-school fallback is used. Holes/disconnected parts are not fully classified and skyline inset geometry is not reconstructed. Clicks and address searches show estimated school pathways for all scenarios and grade levels, independently of the visible map layer. No current GIS dataset is substituted for PPS's proposed baseline.
 
 Before enabling school assignment: verify georeferencing against independent street intersections; separate exterior rings/holes; deduplicate outlines; extract inset coverage; match each polygon to its attendance school; validate scenario coverage and known addresses. Then mark approved datasets reviewed, implement proximity-to-boundary checks, and populate the scenario-by-grade results table. No hypothetical future boundary projections are included.
 

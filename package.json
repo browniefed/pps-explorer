@@ -1,6 +1,35 @@
 {
-  "name": "pps-explorer", "version": "0.1.0", "private": true, "type": "module",
-  "scripts": {"dev":"vite --host 127.0.0.1 --port 3000", "build":"vite build", "typecheck":"tsc --noEmit", "test":"node --test tests/*.test.mjs", "preview":"vite preview", "deploy":"npm run build && wrangler deploy", "cf-typegen":"wrangler types", "data:extract":"python3 scripts/extract_boundaries.py ../pps-boundaries/dist/maps"},
-  "dependencies": {"@tanstack/react-router":"^1.147.3", "@tanstack/react-start":"^1.149.1", "leaflet":"1.9.4", "react":"^19.2.0", "react-dom":"^19.2.0"},
-  "devDependencies": {"@cloudflare/vite-plugin":"^1.0.0", "@types/geojson":"^7946.0.16", "@types/leaflet":"^1.9.21", "@types/node":"^24.0.0", "@types/react":"^19.2.0", "@types/react-dom":"^19.2.0", "@vitejs/plugin-react":"^5.1.2", "typescript":"^5.9.0", "vite":"^7.3.1", "wrangler":"^4.0.0"}
+  "name": "pps-explorer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 3000",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.mjs",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "data:extract": "python3 scripts/extract_boundaries.py public/maps && swift -module-cache-path /tmp/pps-swift-cache scripts/extract_labels.swift public/maps 2>/tmp/pps-pdfkit.log && python3 scripts/name_boundaries.py"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.147.3",
+    "@tanstack/react-start": "^1.149.1",
+    "leaflet": "1.9.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.0.0",
+    "@types/geojson": "^7946.0.16",
+    "@types/leaflet": "^1.9.21",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "typescript": "^5.9.0",
+    "vite": "^7.3.1",
+    "wrangler": "^4.0.0"
+  }
 }
