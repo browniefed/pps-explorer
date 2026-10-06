@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type PointerEvent } from 'react'
 import type { FeatureCollection } from 'geojson'
 import { BoundaryMap, CLUSTERS, type Layer } from '../components/BoundaryMap'
 import { assignmentsAt, bands, scenarios, shortName, type Assignment, type Band, type Scenario } from '../lib/assignments.mjs'
@@ -13,6 +13,10 @@ const PDF_SCENARIO: Record<Scenario, string> = { sq: 'current', a: 'a', b: 'b' }
 const PDF_BAND: Record<Band, string> = { k5: 'elementary', '68': 'middle', '912': 'high' }
 const PPS_DOCUMENTS = 'https://meetings.boardbook.org/Public/Agenda/915?meeting=769955'
 const MOBILE = '(max-width: 720px)'
+
+// Phone bottom sheet: peek shows the title and scenario switch; half and full reveal the rest.
+type Sheet = 'peek' | 'half' | 'full'
+const sheetHeights = (peek: number, vh: number): Record<Sheet, number> => ({ peek, half: Math.round(vh * 0.5), full: Math.round(vh * 0.88) })
 
 type HashState = { scenario: Scenario; band: Band; compare: boolean; position: [number, number] | null }
 
@@ -82,10 +86,68 @@ function Home() {
   const [address, setAddress] = useState('')
   const [busy, setBusy] = useState(false)
   const [searchMsg, setSearchMsg] = useState('Or click anywhere on the map.')
-  const [collapsed, setCollapsed] = useState(false)
-  const [panelInset, setPanelInset] = useState({ left: 0, bottom: 0 })
+  const [mobile, setMobile] = useState(false)
+  const [sheet, setSheet] = useState<Sheet>('half')
+  const [peekHeight, setPeekHeight] = useState(150)
+  const [viewportHeight, setViewportHeight] = useState(800)
+  const [dragHeight, setDragHeight] = useState<number | null>(null)
+  const [sideInset, setSideInset] = useState(0)
   const [hydrated, setHydrated] = useState(false)
   const panel = useRef<HTMLElement>(null)
+  const sheetTop = useRef<HTMLDivElement>(null)
+  const drag = useRef<{ startY: number; startHeight: number; moved: boolean } | null>(null)
+  const suppressClick = useRef(false)
+  const heights = sheetHeights(peekHeight, viewportHeight)
+  // map area hidden by the panel: the side panel on desktop, the sheet (at peek or half) on phones
+  const panelInset = mobile ? { left: 0, bottom: sheet === 'peek' ? peekHeight : heights.half } : { left: sideInset, bottom: 0 }
+  const body = useRef<HTMLDivElement>(null)
+  useEffect(() => { if (sheet === 'peek' && body.current) body.current.scrollTop = 0 }, [sheet])
+
+  // Track phone layout and the sizes the sheet snaps to.
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE)
+    const measure = () => {
+      setMobile(mq.matches)
+      setViewportHeight(window.innerHeight)
+      if (sheetTop.current) setPeekHeight(sheetTop.current.offsetHeight)
+      if (!mq.matches && panel.current) setSideInset(panel.current.getBoundingClientRect().right)
+    }
+    measure()
+    mq.addEventListener('change', measure)
+    window.addEventListener('resize', measure)
+    return () => { mq.removeEventListener('change', measure); window.removeEventListener('resize', measure) }
+  }, [])
+
+  const onGrabDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (!mobile || !panel.current) return
+    drag.current = { startY: e.clientY, startHeight: panel.current.offsetHeight, moved: false }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  const onGrabMove = (e: PointerEvent<HTMLDivElement>) => {
+    const d = drag.current
+    if (!d) return
+    const dy = d.startY - e.clientY
+    if (Math.abs(dy) > 6) d.moved = true
+    if (d.moved) setDragHeight(Math.min(heights.full, Math.max(heights.peek, d.startHeight + dy)))
+  }
+  const onGrabUp = (e: PointerEvent<HTMLDivElement>) => {
+    const d = drag.current
+    drag.current = null
+    if (!d?.moved) return
+    // a drag ends in a snap to the nearest stop, nudged in the direction of travel
+    const h = Math.min(heights.full, Math.max(heights.peek, d.startHeight + (d.startY - e.clientY)))
+    const dir = Math.sign(d.startY - e.clientY)
+    const target = (Object.keys(heights) as Sheet[]).reduce((best, k) =>
+      Math.abs(heights[k] - h - dir * 40) < Math.abs(heights[best] - h - dir * 40) ? k : best, 'peek' as Sheet)
+    setSheet(target)
+    setDragHeight(null)
+    suppressClick.current = true
+  }
+  // Tapping the grab area (or Enter on its button) toggles between peek and half.
+  const onGrabClick = () => {
+    if (suppressClick.current) { suppressClick.current = false; return }
+    if (mobile) setSheet((s) => (s === 'peek' ? 'half' : 'peek'))
+  }
 
   // URL hash holds the view so a lookup can be shared as a link.
   useEffect(() => {
@@ -94,10 +156,7 @@ function Home() {
     if (h.band) setBand(h.band)
     setCompare(!!h.compare)
     if (h.position) { setPosition(h.position); setFocusSelection(true); setLocationName('Shared location') }
-    const mobile = window.matchMedia(MOBILE).matches
-    if (mobile && !h.position) setCollapsed(true)
-    const rect = panel.current?.getBoundingClientRect()
-    setPanelInset(mobile ? { left: 0, bottom: rect ? window.innerHeight * 0.62 : 0 } : { left: rect ? rect.right : 0, bottom: 0 })
+    if (window.matchMedia(MOBILE).matches && !h.position) setSheet('peek')
     setHydrated(true)
   }, [])
   useEffect(() => { if (hydrated) writeHash({ scenario, band, compare, position }) }, [hydrated, scenario, band, compare, position])
@@ -123,7 +182,7 @@ function Home() {
     setPosition(point)
     setFocusSelection(false)
     setLocationName('')
-    setCollapsed(false)
+    setSheet((s) => (s === 'peek' ? 'half' : s))
   }, [])
 
   const areas = datasets && Object.fromEntries(Object.entries(datasets).map(([k, v]) => [k, v.areas]))
@@ -151,7 +210,7 @@ function Home() {
       setFocusSelection(true)
       setLocationName(hit.address)
       setSearchMsg(hit.address)
-      setCollapsed(false)
+      setSheet((s) => (s === 'peek' ? 'half' : s))
     } catch {
       setSearchMsg('No confident match in Portland. Add the ZIP code, or click the map.')
     } finally {
@@ -164,15 +223,23 @@ function Home() {
       <BoundaryMap datasets={datasets} scenario={scenario} band={band} compare={compare} position={position}
         focusSelection={focusSelection} panelInset={panelInset} onSelect={select} />
 
-      <aside className={collapsed ? 'panel collapsed' : 'panel'} ref={panel}>
-        <button className="sheet-handle" type="button" aria-label="Expand or collapse panel" aria-expanded={!collapsed}
-          onClick={() => setCollapsed((c) => !c)} />
-        <header>
-          <h1>PPS attendance boundaries</h1>
-          <p className="sub">Proposed scenarios for school year 2027–28</p>
-        </header>
+      <aside className={dragHeight !== null ? 'panel dragging' : 'panel'} ref={panel} data-sheet={mobile ? sheet : undefined}
+        style={mobile ? { height: dragHeight ?? heights[sheet] } : undefined}>
+        <div className="sheet-top" ref={sheetTop}>
+          {/* drag zone: handle + title. Never scrolls away, so the sheet can always be moved. */}
+          <div className="sheet-grab" onPointerDown={onGrabDown} onPointerMove={onGrabMove} onPointerUp={onGrabUp}
+            onPointerCancel={() => { drag.current = null; setDragHeight(null) }} onClick={onGrabClick}>
+            <button className="sheet-handle" type="button" aria-expanded={sheet !== 'peek'}
+              aria-label={sheet === 'peek' ? 'Show map controls' : 'Hide map controls'} />
+            <header>
+              <h1>PPS attendance boundaries</h1>
+              <p className="sub">Proposed scenarios for school year 2027–28</p>
+            </header>
+          </div>
+          <Segmented label="Scenario" value={scenario} keys={scenarios} options={SCENARIO_NAMES} onChange={setScenario} large />
+        </div>
 
-        <Segmented label="Scenario" value={scenario} keys={scenarios} options={SCENARIO_NAMES} onChange={setScenario} large />
+        <div className="panel-body" ref={body} inert={mobile && sheet === 'peek' && dragHeight === null}>
         <Segmented label="Grades" value={band} keys={bands} options={BAND_NAMES} onChange={setBand} />
 
         <label className="check">
@@ -240,6 +307,7 @@ function Home() {
           </p>
           <p>Address searches go straight from your browser to Esri’s geocoder and aren’t saved by this site.</p>
         </footer>
+        </div>
       </aside>
     </main>
   )

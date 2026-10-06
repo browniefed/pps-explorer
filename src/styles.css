@@ -106,6 +106,8 @@ footer p { margin: 0; font-size: 12px; color: var(--ink-soft); }
 .sources a { color: var(--pps); }
 
 .sheet-handle { display: none; }
+.sheet-top, .panel-body { display: flex; flex-direction: column; gap: 16px; }
+.panel-body { flex: 1; }
 
 /* map: labels, tooltips, selection pin */
 .leaflet-container { font-family: var(--font); }
@@ -122,16 +124,28 @@ footer p { margin: 0; font-size: 12px; color: var(--ink-soft); }
 }
 
 @media (max-width: 720px) {
+  /* bottom sheet: fixed top (drag zone + scenario switch), scrolling body, height set inline per snap point */
   .panel {
-    top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 62vh;
-    border-radius: 16px 16px 0 0; padding: 8px 16px 16px; gap: 12px;
-    transition: max-height .25s ease;
+    top: auto; left: 0; right: 0; bottom: 0; width: auto;
+    border-radius: 16px 16px 0 0; padding: 0; gap: 0;
+    overflow: hidden; transition: height .25s ease;
   }
-  .panel.collapsed { max-height: 168px; overflow: hidden; }
+  .panel.dragging { transition: none; }
+  .sheet-top { padding: 0 16px 12px; border-bottom: 1px solid var(--line); }
+  .panel[data-sheet="peek"] .sheet-top { border-bottom-color: transparent; }
+  .sheet-grab {
+    touch-action: none; user-select: none; cursor: grab;
+    margin: 0 -16px; padding: 0 16px 4px;
+  }
+  .panel.dragging .sheet-grab { cursor: grabbing; }
   .sheet-handle {
-    display: block; align-self: center; flex: none;
-    width: 48px; height: 18px; border: 0; padding: 0; cursor: pointer; border-radius: 3px;
-    background: linear-gradient(var(--line), var(--line)) center / 40px 5px no-repeat;
+    display: block; width: 100%; height: 22px; margin: 0; padding: 0; border: 0; cursor: inherit;
+    background: linear-gradient(var(--ink-soft), var(--ink-soft)) center / 40px 5px no-repeat;
+    border-radius: 3px; opacity: .55;
+  }
+  .panel-body {
+    flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+    padding: 12px 16px calc(16px + env(safe-area-inset-bottom)); gap: 12px;
   }
   h1 { font-size: 18px; }
   .sub { display: none; }
