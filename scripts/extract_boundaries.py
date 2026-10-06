@@ -69,14 +69,16 @@ def extract(path):
     def flush(op):
         nonlocal rings,ring
         if ring:rings.append(ring)
-        if is_boundary() and op in ('S','s','B','B*','f','f*'):
+        # Attendance areas in these PPS exports are stroked paths. Filled school
+        # symbols can inherit a boundary color; they are not catchment geometry.
+        if is_boundary() and op in ('S','s'):
             for r in rings:
                 if len(r)<4 or math.dist(r[0],r[-1])>1:continue
                 if r[-1]!=r[0]:r.append(r[0])
                 if not all(bbox[0]-1<=p[0]<=bbox[2]+1 and bbox[1]-1<=p[1]<=bbox[3]+1 for p in r):continue
                 area=abs(sum(r[i][0]*r[i+1][1]-r[i+1][0]*r[i][1] for i in range(len(r)-1)))/2
                 if area<100:continue
-                features.append({'type':'Feature','properties':{'boundary_id':f'{path.stem}-{len(features)+1}','school_name':None,'review_status':'unverified'},'geometry':{'type':'Polygon','coordinates':[[geo(p) for p in r]]}})
+                features.append({'type':'Feature','properties':{'boundary_id':f'{path.stem}-{len(features)+1}','school_name':None,'review_status':'unverified','source_paint':op},'geometry':{'type':'Polygon','coordinates':[[geo(p) for p in r]]}})
         rings=[];ring=[]
     for line in s.splitlines():
         parts=line.split()
@@ -84,8 +86,8 @@ def extract(path):
         op=parts[-1]
         if op=='SCN':stroke=list(map(float,parts[:-1]))
         elif op=='cm':ctm=multiply(ctm,list(map(float,parts[:6])))
-        elif op=='q':stack.append(ctm[:])
-        elif op=='Q':ctm=stack.pop()
+        elif op=='q':stack.append((ctm[:],stroke[:]))
+        elif op=='Q':ctm,stroke=stack.pop()
         elif op=='BDC':
             name=next((x[1:] for x in parts if x.startswith('/Layer_')),None);marked.append(layers.get(name,''))
         elif op=='BMC':marked.append('')

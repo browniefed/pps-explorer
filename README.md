@@ -53,3 +53,5 @@ This targets Workers, not the old Pages ZIP. No database is needed for static bo
 - [Leaflet GeoJSON documentation](https://leafletjs.com/examples/geojson/)
 
 Tile policy: https://operations.osmfoundation.org/policies/tiles/ . The viewer uses the required HTTPS URL, visible attribution, browser caching, an explicit referrer policy and viewport-only tile requests. File previews do not request OSM tiles. No proxy, header spoofing, bulk download or cache bypass is used.
+
+Elementary extraction QA: filled school-marker glyphs are excluded; graphics state restores both transforms and stroke colors. Scenario A contains 35 main-map catchment paths and B contains 38, rather than the old erroneous 66/72 features. Nested elementary rings were checked and none were found in these extracts. Counts exclude unresolved northwest inset coverage.

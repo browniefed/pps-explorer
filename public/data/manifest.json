@@ -13,7 +13,7 @@
     "level": "elementary",
     "scenario": "a",
     "url": "/data/a-elementary.geojson",
-    "features": 66,
+    "features": 35,
     "reviewed": false,
     "source_pdf": "/maps/a-elementary.pdf"
   },
@@ -22,7 +22,7 @@
     "level": "elementary",
     "scenario": "b",
     "url": "/data/b-elementary.geojson",
-    "features": 72,
+    "features": 38,
     "reviewed": false,
     "source_pdf": "/maps/b-elementary.pdf"
   },
@@ -40,7 +40,7 @@
     "level": "middle",
     "scenario": "a",
     "url": "/data/a-middle.geojson",
-    "features": 18,
+    "features": 13,
     "reviewed": false,
     "source_pdf": "/maps/a-middle.pdf"
   },
@@ -49,7 +49,7 @@
     "level": "middle",
     "scenario": "b",
     "url": "/data/b-middle.geojson",
-    "features": 18,
+    "features": 13,
     "reviewed": false,
     "source_pdf": "/maps/b-middle.pdf"
   },
