@@ -1,0 +1,11 @@
+node_modules/
+.output/
+dist/
+.wrangler/
+.dev.vars*
+.env*
+!.env.example
+.DS_Store
+
+__pycache__/
+src/routeTree.gen.ts
