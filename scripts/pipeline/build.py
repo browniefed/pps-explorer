@@ -7,6 +7,7 @@ district's outer boundary. The scenario PDFs draw some areas across the Columbia
 shore; scenarios don't change the district boundary, so anything outside it is drawing slop.
 """
 import json
+import os
 import re
 import sys
 
@@ -125,7 +126,13 @@ def school_kind(text):
     return "other"
 
 
-def build(raw, geo, band):
+# One outline holding two schools that each had their own area in status quo. The scenario maps
+# don't say which of them serves it (Rigler and Scott, Kelly and Lent in A and B), so the area is
+# flagged as unclear instead of guessing. Pairs the board memo settles are listed here.
+RESOLVED = {frozenset({"César Chávez", "Rosa Parks"}): "Rosa Parks"}  # memo: Chávez's non-immersion K-5 -> Rosa Parks
+
+
+def build(raw, geo, band, sq_keys=None):
     _, layers = BANDS[band]
     feats = []
 
@@ -173,12 +180,24 @@ def build(raw, geo, band):
             cands.sort(key=lambda s: (0 if "Neighborhood" in s["name"] else 1, len(s["name"])))
             if not cands:
                 cands = [s for s in inside if s["kind"] not in ("closed",)] or inside
+            # Two open schools that both had their own status quo area: the map alone can't say which serves it
+            shared = []
+            if sq_keys is not None:
+                had_area = sorted({school_key(s["name"]) for s in inside
+                                   if s["kind"] not in ("closed", "focus") and school_key(s["name"]) in sq_keys})
+                if len(had_area) > 1:
+                    pick = RESOLVED.get(frozenset(had_area))
+                    if pick:
+                        cands = [s for s in cands if school_key(s["name"]) == pick] or cands
+                    else:
+                        shared = had_area
             if cands:
                 # key by school only: a K-8 area may be outlined by both a K-5 ring and a K-8 dashed ring
                 key = school_key(cands[0]["name"])
                 layer = "K-8" if cands[0]["kind"] == "k8" else pc["layer"]
-                ent = named.setdefault(key, {"geom": [], "label": cands[0]["name"], "layer": layer})
+                ent = named.setdefault(key, {"geom": [], "label": cands[0]["name"], "layer": layer, "shared": []})
                 ent["geom"].append(pc["geom"])
+                ent["shared"] = sorted(set(ent["shared"]) | set(shared))
                 if layer == "K-8":
                     ent["layer"], ent["label"] = "K-8", cands[0]["name"]
             else:
@@ -209,8 +228,10 @@ def build(raw, geo, band):
             label, layer = named[key]["label"], named[key]["layer"]
             level = "K-8" if layer == "K-8" else BANDS[band][0]
             suffix = "K-8" if layer == "K-8" else ("Middle School" if band == "68" else "Elementary")
-            feats.append(("area", key, {"name": f"{key} {suffix}", "school_label": label, "cluster": split[0]["name"],
-                                        "clusters": split, "level": level}, g))
+            props = {"name": f"{key} {suffix}", "school_label": label, "cluster": split[0]["name"], "clusters": split, "level": level}
+            if named[key]["shared"]:
+                props["unclear_between"] = named[key]["shared"]
+            feats.append(("area", key, props, g))
 
     out = []
     for _, _, props, g in feats:
@@ -253,15 +274,28 @@ def main(raw_dir, georef_path, out_dir, district_path=None):
         DISTRICT = unary_union([shape(c["geometry"]).buffer(0) for c in cells]).buffer(DISTRICT_TOLERANCE)
     geo = Geo(json.load(open(georef_path)))
     index = {"scenarios": SCENARIOS, "bands": {k: v[0] for k, v in BANDS.items()}, "layers": {}}
-    for sc in SCENARIOS:
+    sq_keys = {}
+    for sc in SCENARIOS:  # status quo first, so scenario maps can tell which schools had an area before
         for band in BANDS:
             raw = json.load(open(f"{raw_dir}/{sc}_{band}.json"))
-            areas, pts, clusters = build(raw, geo, band)
+            areas, pts, clusters = build(raw, geo, band, None if sc == "sq" else sq_keys[band])
+            if sc == "sq":
+                sq_keys[band] = {school_key(f["properties"]["school_label"]) for f in areas}
             json.dump({"type": "FeatureCollection", "features": areas}, open(f"{out_dir}/{sc}_{band}.geojson", "w"), separators=(",", ":"))
             json.dump({"type": "FeatureCollection", "features": pts}, open(f"{out_dir}/{sc}_{band}_schools.geojson", "w"), separators=(",", ":"))
             index["layers"][f"{sc}_{band}"] = {"areas": len(areas), "schools": len(pts)}
             print(f"{sc}_{band}: {len(areas)} areas, {len(pts)} schools; clusters {sorted(clusters)}")
     json.dump(index, open(f"{out_dir}/index.json", "w"), indent=1)
+
+    # Rivers and lakes from the basemap, so diff.py can leave water out of "where the school changes".
+    water = []
+    for w in json.load(open(f"{raw_dir}/sq_912.json")).get("water", []):
+        poly = rings_to_poly(w["rings"])
+        if poly is not None:
+            water.append(polys_only(geo.page_to_ll(poly, w["frame"]).buffer(0)))
+    water_path = os.path.join(os.path.dirname(os.path.abspath(georef_path)), "water.geojson")
+    json.dump({"type": "Feature", "properties": {}, "geometry": mapping(unary_union(water))}, open(water_path, "w"))
+    print("water ->", water_path)
 
 
 if __name__ == "__main__":

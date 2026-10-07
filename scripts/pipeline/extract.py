@@ -12,6 +12,8 @@ MAIN_FRAME = (39.1, 36.0, 2551.8, 3024.0)
 INSET_BOX = (59.0, 2102.2, 698.4, 2983.9)      # outer box covering main map
 INSET_FRAME = (76.3, 2122.1, 673.5, 2964.0)     # inset map content
 
+WATER_COLORS = {(0.638, 0.839, 0.979), (0.745, 0.91, 1.0)}  # rivers and lakes on the basemap
+
 LAYER_COLORS = {
     (0.854, 0.67, 0.0): "K-5",
     (0.373, 0.063, 0.188): "K-8",
@@ -183,7 +185,7 @@ def main(pdf, out):
             if name not in frame_start and x.get("fill") == (1.0, 1.0, 1.0) and all(abs(a - b) < 1 for a, b in zip((r.x0, r.y0, r.x1, r.y1), f)):
                 frame_start[name] = x["seqno"]
     cluster_block = 4 * len(leg)
-    clusters, areas = [], []
+    clusters, areas, water = [], [], []
     for x in drawings:
         fr = which_frame(x["rect"])
         if fr is None:
@@ -192,12 +194,14 @@ def main(pdf, out):
         if x.get("fill") and x["type"] in ("f", "fs") and rc(x["fill"]) in leg and len(x["items"]) >= 20 and in_block:
             clusters.append({"cluster": leg[rc(x["fill"])], "color": rc(x["fill"]), "frame": fr,
                              "rings": path_rings(x["items"])})
+        elif x.get("fill") and x["type"] in ("f", "fs") and rc(x["fill"]) in WATER_COLORS:
+            water.append({"frame": fr, "rings": path_rings(x["items"])})
         elif x["type"] == "s" and rc(x.get("color")) in LAYER_COLORS and (x.get("width") or 0) >= 2.5:
             rings = path_rings(x["items"])
             if len(rings) > 3:
                 rings = chain_dashes(rings, INSET_FRAME if fr == "inset" else MAIN_FRAME)
             areas.append({"layer": LAYER_COLORS[rc(x["color"])], "frame": fr, "rings": rings})
-    data = {"legend": {str(k): v for k, v in leg.items()}, "clusters": clusters, "areas": areas,
+    data = {"legend": {str(k): v for k, v in leg.items()}, "clusters": clusters, "areas": areas, "water": water,
             "labels": labels(page), "icons": icons(drawings)}
     json.dump(data, open(out, "w"))
     print(pdf.split("/")[-1], "legend", list(leg.values()), "clusters", len(clusters), "areas", len(areas),

@@ -18,5 +18,6 @@ done
 # Every map shares one page layout; current-high.pdf carries the GeoPDF viewports.
 $PY "$HERE/gpts.py" "$PDFS/current-high.pdf" "$WORK/georef.json"
 $PY "$HERE/build.py" "$WORK/raw" "$WORK/georef.json" "$OUT" "$HERE/reference/city_school_boundaries.geojson"
+$PY "$HERE/diff.py" "$OUT" "$WORK/water.geojson"
 $PY "$HERE/qa.py" "$OUT"
 $PY "$HERE/verify_city.py" "$HERE/reference/city_school_boundaries.geojson" "$OUT" | grep "^=="

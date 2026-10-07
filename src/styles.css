@@ -169,7 +169,7 @@ button.link {
   font: inherit; color: var(--pps); background: none; border: 0; padding: 0; cursor: pointer;
   text-decoration: underline; text-underline-offset: 2px;
 }
-.leaflet-tooltip.school-tip { max-width: 280px; white-space: normal; }
+.leaflet-tooltip.school-tip { width: max-content; max-width: 280px; white-space: normal; }
 .school-tip p { margin: 4px 0 0; }
 .contact { margin: -8px 0 0; color: var(--ink-soft); font-size: 13px; }
 .contact a { color: var(--pps); }
@@ -187,3 +187,21 @@ button.link {
   text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 2px #fff;
 }
 .site-label::before { display: none; }
+
+/* where the school changes (hatched) and closures */
+.leaflet-pane path.changed-area { fill: url(#hatch-change); }
+.hatch-swatch {
+  width: 16px; height: 16px; border-radius: 3px; flex: none; border: 1.5px dashed #17232c;
+  background: repeating-linear-gradient(45deg, rgba(23, 35, 44, .45) 0 2px, rgba(23, 35, 44, .06) 2px 5px);
+}
+.closed-icon, .closed-swatch {
+  display: flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #ffffff; color: #c92a2a; border: 2px solid #c92a2a;
+  font: 700 16px/1 var(--font); box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+}
+.closed-swatch { width: 16px; height: 16px; font-size: 13px; box-shadow: none; flex: none; }
+
+/* what happens next */
+.timeline ol { margin: 0 0 6px; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+.timeline h3 { font-size: 14px; font-weight: 700; margin: 10px 0 4px; }

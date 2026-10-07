@@ -62,3 +62,21 @@ export function programMoves(scenario, { scenarioSchools, sqSchools }) {
   }
   return moves
 }
+
+export const CLOSURE_COLOR = '#343a40'
+
+// Arrows from each closing school to the schools receiving its students (board memo), for one grade
+// band: drawn when both ends appear on that band's maps (Sellwood -> Hosford/Brentwood on 6-8).
+export function closureMoves(scenario, { scenarioSchools, sqSchools }) {
+  const moves = []
+  for (const e of CHANGES[scenario] ?? []) {
+    if (e.kind !== 'close' || !e.to) continue
+    const at = point(sqSchools, schoolKey(e.school)) ?? point(scenarioSchools, schoolKey(e.school))
+    if (!at) continue
+    for (const to of e.to) {
+      const end = point(scenarioSchools, schoolKey(to)) ?? point(sqSchools, schoolKey(to))
+      if (end) moves.push({ program: `${e.school} closes`, kind: 'closure', color: CLOSURE_COLOR, fromName: e.school, toName: to, from: at, to: end, detail: e.detail })
+    }
+  }
+  return moves
+}

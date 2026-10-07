@@ -13,10 +13,10 @@ function assignment(collection, point) {
   if (!collection) return { status: 'unavailable', school: null }
   const hits = lookup(collection, point)
   if (hits.length > 1) return { status: 'ambiguous', school: null, candidates: hits.map((f) => f.properties.name).sort() }
-  if (hits.length === 1) return { status: 'matched', school: hits[0].properties.name }
+  if (hits.length === 1) return { status: 'matched', school: hits[0].properties.name, unclearBetween: hits[0].properties.unclear_between }
   // On a hairline sliver between neighbours, or just off a river bank: report the nearest area, flagged.
   const near = nearest(collection, point, NEAR_METRES)
-  if (near) return { status: 'near-boundary', school: near.properties.name }
+  if (near) return { status: 'near-boundary', school: near.properties.name, unclearBetween: near.properties.unclear_between }
   return { status: 'outside', school: null }
 }
 
@@ -27,7 +27,17 @@ export function assignmentsAt(datasets, point) {
     result[s] = {}
     for (const b of bands) {
       const a = assignment(datasets[`${s}_${b}`], point)
-      if (s !== 'sq') a.changed = a.school !== result.sq[b].school
+      if (s !== 'sq') {
+        a.changed = a.school !== result.sq[b].school
+        // The scenario map puts today's school in one outline with another school (Rigler with Scott, Kelly
+        // with Lent) without saying which serves it: for spots in today's school's area, say so.
+        const today = result.sq[b].school
+        if (a.changed && today && a.unclearBetween?.includes(shortName(today).replace(/ K-8$/, ''))) {
+          a.status = 'unclear'
+          a.alternatives = [today]
+        }
+      }
+      delete a.unclearBetween
       result[s][b] = a
     }
   }

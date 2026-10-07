@@ -5,10 +5,12 @@ export const scenarios: readonly Scenario[]
 export const bands: readonly Band[]
 export const NEAR_METRES: number
 export type Assignment = {
-  status: 'matched' | 'near-boundary' | 'ambiguous' | 'outside' | 'unavailable'
+  status: 'matched' | 'near-boundary' | 'ambiguous' | 'outside' | 'unavailable' | 'unclear'
   school: string | null
   candidates?: string[]
   changed?: boolean
+  // for 'unclear': the other school that may serve this spot (today's school)
+  alternatives?: string[]
 }
 export type Assignments = Record<Scenario, Record<Band, Assignment>>
 export function shortName(name: string): string

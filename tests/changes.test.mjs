@@ -49,7 +49,12 @@ test('Rigler stays open: its notes explain the Scott program move and the missin
   assert.equal(results.a.k5.school, 'Scott Elementary')
   const notes = spotNotes('a', results, areaNames).map((n) => n.text)
   assert(notes.some((t) => t === 'Spanish immersion moves here from Scott.'), notes.join('\n'))
-  assert(notes.some((t) => t.startsWith('Rigler is not closing.')), notes.join('\n'))
+  assert(notes.some((t) => t.startsWith('Rigler is not closing. On PPS’s Scenario A map, Rigler and Scott sit inside one boundary')), notes.join('\n'))
+  assert.equal(results.a.k5.status, 'unclear')
+  assert.deepEqual(results.a.k5.alternatives, ['Rigler Elementary'])
+  // a spot in Scott's own current area is not unclear
+  const scott = schoolLayers.sq_k5.features.find((f) => f.properties.name.startsWith('Scott')).geometry.coordinates
+  assert.equal(assignmentsAt(areaLayers, scott).a.k5.status, 'matched')
 })
 
 test('scenario differences: Lewis closes only in A, and B explains that it stays open', () => {

@@ -21,11 +21,11 @@ const MOBILE = '(max-width: 720px)'
 type Sheet = 'peek' | 'half' | 'full'
 const sheetHeights = (peek: number, vh: number): Record<Sheet, number> => ({ peek, half: Math.round(vh * 0.5), full: Math.round(vh * 0.88) })
 
-type HashState = { scenario: Scenario; band: Band; compare: boolean; programs: boolean; position: [number, number] | null }
+type HashState = { scenario: Scenario; band: Band; compare: boolean; programs: boolean; changes: boolean; position: [number, number] | null }
 
 function readHash(): Partial<HashState> {
   const h = new URLSearchParams(window.location.hash.slice(1))
-  const out: Partial<HashState> = { compare: h.get('cmp') === '1', programs: h.get('imm') !== '0' }
+  const out: Partial<HashState> = { compare: h.get('cmp') === '1', programs: h.get('imm') !== '0', changes: h.get('chg') !== '0' }
   const s = h.get('s'), g = h.get('g')
   if (s && s in SCENARIO_NAMES) out.scenario = s as Scenario
   if (g && g in BAND_NAMES) out.band = g as Band
@@ -34,10 +34,11 @@ function readHash(): Partial<HashState> {
   return out
 }
 
-function writeHash({ scenario, band, compare, programs, position }: HashState) {
+function writeHash({ scenario, band, compare, programs, changes, position }: HashState) {
   const parts = [`s=${scenario}`, `g=${band}`]
   if (compare) parts.push('cmp=1')
   if (!programs) parts.push('imm=0')
+  if (!changes) parts.push('chg=0')
   if (position) parts.push(`pt=${position[0].toFixed(5)},${position[1].toFixed(5)}`)
   window.history.replaceState(null, '', '#' + parts.join('&'))
 }
@@ -69,10 +70,13 @@ function Segmented<T extends string>({ label, value, keys, options, onChange, la
 }
 
 function Cell({ a }: { a: Assignment }) {
-  const name = a.school ? shortName(a.school) : a.status === 'ambiguous' ? 'Overlapping areas' : 'Outside district'
+  const name = a.status === 'unclear' && a.school && a.alternatives
+    ? `${shortName(a.alternatives[0]).replace(/ K-8$/, '')} or ${shortName(a.school)}?`
+    : a.school ? shortName(a.school) : a.status === 'ambiguous' ? 'Overlapping areas' : 'Outside district'
   const cls = [a.changed ? 'changed' : '', a.school ? '' : 'none'].filter(Boolean).join(' ')
   return (
-    <td className={cls || undefined} title={a.status === 'near-boundary' ? 'This spot is on a boundary line; nearest area shown.' : undefined}>
+    <td className={cls || undefined} title={a.status === 'near-boundary' ? 'This spot is on a boundary line; nearest area shown.'
+      : a.status === 'unclear' ? 'PPS’s scenario map draws both schools inside one boundary; see the note below.' : undefined}>
       {name}{a.status === 'near-boundary' && ' *'}
     </td>
   )
@@ -141,6 +145,7 @@ function Home() {
   const [band, setBand] = useState<Band>('k5')
   const [compare, setCompare] = useState(false)
   const [programs, setPrograms] = useState(true)
+  const [changes, setChanges] = useState(true)
   const [position, setPosition] = useState<[number, number] | null>(null)
   const [focusSelection, setFocusSelection] = useState(false)
   const [locationName, setLocationName] = useState('')
@@ -219,11 +224,12 @@ function Home() {
     if (h.band) setBand(h.band)
     setCompare(!!h.compare)
     setPrograms(h.programs !== false)
+    setChanges(h.changes !== false)
     if (h.position) { setPosition(h.position); setFocusSelection(true); setLocationName('Shared location') }
     if (window.matchMedia(MOBILE).matches && !h.position) setSheet('peek')
     setHydrated(true)
   }, [])
-  useEffect(() => { if (hydrated) writeHash({ scenario, band, compare, programs, position }) }, [hydrated, scenario, band, compare, programs, position])
+  useEffect(() => { if (hydrated) writeHash({ scenario, band, compare, programs, changes, position }) }, [hydrated, scenario, band, compare, programs, changes, position])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -234,8 +240,11 @@ function Home() {
     }
     Promise.all(scenarios.flatMap((s) => bands.map(async (b) => {
       const key = `${s}_${b}`
-      const [areas, schools] = await Promise.all([get(`/data/${key}.geojson`), get(`/data/${key}_schools.geojson`)])
-      return [key, { areas, schools }] as const
+      const [areas, schools, changed] = await Promise.all([
+        get(`/data/${key}.geojson`), get(`/data/${key}_schools.geojson`),
+        s === 'sq' ? Promise.resolve(undefined) : get(`/data/${key}_changed.geojson`),
+      ])
+      return [key, { areas, schools, changed }] as const
     })))
       .then((entries) => setDatasets(Object.fromEntries(entries)))
       .catch((e) => { if (e.name !== 'AbortError') setDataError(true) })
@@ -309,7 +318,7 @@ function Home() {
 
   return (
     <main>
-      <BoundaryMap datasets={datasets} scenario={scenario} band={band} compare={compare} programs={programs} position={position}
+      <BoundaryMap datasets={datasets} scenario={scenario} band={band} compare={compare} programs={programs} changes={changes} position={position}
         focusSelection={focusSelection} panelInset={panelInset} onSelect={select} />
 
       <aside className={dragHeight !== null ? 'panel dragging' : 'panel'} ref={panel} data-sheet={mobile ? sheet : undefined}
@@ -342,6 +351,19 @@ function Home() {
         </label>
 
         <label className="check">
+          <input type="checkbox" checked={changes} disabled={scenario === 'sq'} onChange={(e) => setChanges(e.target.checked)} />
+          <span>Highlight where the school changes, and where closing schools’ students go</span>
+        </label>
+        {changes && scenario !== 'sq' && (
+          <div className="program-key">
+            <ul>
+              <li className="wide"><span className="hatch-swatch" />Assigned school differs from status quo</li>
+              <li className="wide"><span className="closed-swatch">×</span>School closes; dashed arrows lead to the receiving schools</li>
+            </ul>
+          </div>
+        )}
+
+        <label className="check">
           <input type="checkbox" checked={programs} onChange={(e) => setPrograms(e.target.checked)} />
           <span>Show immersion programs{scenario !== 'sq' ? ' and where they move' : ''}</span>
         </label>
@@ -355,7 +377,7 @@ function Home() {
             </ul>
             <p className="hint">
               Rings mark immersion schools{scenario !== 'sq' ? '; arrows show a program moving to a new school' : ''}. Labels appear when you zoom in.
-              {band === 'k5' && scenario !== 'sq' && ' Rigler, Kelly and César Chávez stay open as immersion schools; their current neighborhoods are assigned to Scott, Lent and Rosa Parks.'}
+              {band === 'k5' && scenario !== 'sq' && ' Rigler, Kelly and César Chávez don’t close. César Chávez’s neighborhood goes to Rosa Parks (board memo). PPS’s maps draw Rigler and Scott, and Kelly and Lent, inside shared boundaries without saying which school serves each area.'}
             </p>
           </div>
         )}
@@ -401,6 +423,24 @@ function Home() {
         )}
 
         <Changes scenario={scenario} onGo={goToSchool} />
+
+        <section className="timeline">
+          <h2>What happens next</h2>
+          <ol>
+            <li><strong>Oct 6, 2026:</strong> scenarios presented to the school board</li>
+            <li><strong>October–November:</strong> community feedback on both scenarios</li>
+            <li><strong>Mid-November:</strong> the superintendent recommends one plan</li>
+            <li><strong>December:</strong> the board votes in a public meeting</li>
+            <li><strong>Fall 2027:</strong> changes take effect for the 2027–28 school year</li>
+          </ol>
+          <p className="hint">These are proposals, not decisions. Transportation, staffing and transition support are still being planned.</p>
+          <h3>Share feedback with PPS</h3>
+          <ul className="sources">
+            <li>Email <a href="mailto:Rightsizing@pps.net">Rightsizing@pps.net</a></li>
+            <li><a href="https://www.pps.net/rightsizing-rsvp" target="_blank" rel="noreferrer">RSVP for a community event</a></li>
+            <li><a href="https://www.pps.net/about/portland-public-schools-information/rightsize/frequently-asked-questions" target="_blank" rel="noreferrer">PPS rightsizing FAQ</a> (has a question form)</li>
+          </ul>
+        </section>
 
         <section className="legend">
           <h2>High school cluster</h2>

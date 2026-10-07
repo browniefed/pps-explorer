@@ -77,12 +77,18 @@ export function spotNotes(scenario, results, areaNames, labels = {}) {
     // (e.g. Rigler, which becomes an immersion site inside Scott's area). Most important, so it goes first.
     if (before && after && before !== after) {
       const key = schoolKey(before)
-      const explained = eventsFor(scenario, before).some((e) => e.kind === 'close' || (e.kind === 'grades' && schoolKey(e.school) === key))
-      if (!explained && !areaNames[`${scenario}_${b}`]?.has(key)) {
-        const label = labels[`${scenario}_${b}`]?.[key] ?? ''
-        const langs = [...label.matchAll(/(Spanish|Mandarin|Vietnamese|Japanese|Russian) Immersion/g)].map((m) => m[1])
-        const as = langs.length ? ` as a ${langs.join(' and ')} immersion school` : ''
-        add(short(before), `${short(before)} is not closing. It stays open${as}, but on the Scenario ${scenario.toUpperCase()} map it has no neighborhood boundary of its own, so this spot is assigned to ${short(after)}.`)
+      const S = scenario.toUpperCase()
+      if (results[scenario][b].status === 'unclear') {
+        // one outline on the scenario map holds both schools, and PPS doesn't say which serves this area
+        add(short(before), `${short(before)} is not closing. On PPS’s Scenario ${S} map, ${short(before)} and ${short(after)} sit inside one boundary with no line between them, and PPS’s documents don’t say which school would serve ${short(before)}’s current area. Check with PPS (Rightsizing@pps.net).`)
+      } else {
+        const explained = eventsFor(scenario, before).some((e) => e.kind === 'close' || (e.kind === 'grades' && schoolKey(e.school) === key))
+        if (!explained && !areaNames[`${scenario}_${b}`]?.has(key)) {
+          const label = labels[`${scenario}_${b}`]?.[key] ?? ''
+          const langs = [...label.matchAll(/(Spanish|Mandarin|Vietnamese|Japanese|Russian) Immersion/g)].map((m) => m[1])
+          const as = langs.length ? ` as a ${langs.join(' and ')} immersion school` : ''
+          add(short(before), `${short(before)} is not closing. It stays open${as}, but on the Scenario ${S} map it has no neighborhood boundary of its own, so this spot is assigned to ${short(after)}.`)
+        }
       }
     }
     // today's school first, then the school this spot is assigned to under the scenario

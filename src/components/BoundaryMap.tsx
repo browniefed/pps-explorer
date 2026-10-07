@@ -3,7 +3,7 @@ import type * as Leaflet from 'leaflet'
 import type { Feature, FeatureCollection, Polygon, MultiPolygon } from 'geojson'
 import type { Band, Scenario } from '../lib/assignments.mjs'
 import { describe, eventsFor, schoolKey } from '../lib/changes.mjs'
-import { immersionSites, PROGRAM_COLORS, programMoves, type ProgramMove } from '../lib/programs.mjs'
+import { closureMoves, immersionSites, PROGRAM_COLORS, programMoves, type ProgramMove } from '../lib/programs.mjs'
 
 // Fill colours taken from the PPS map legend.
 export const CLUSTERS: Record<string, string> = {
@@ -17,7 +17,7 @@ export const CLUSTERS: Record<string, string> = {
   'Wells-Barnett': '#8ade8e',
 }
 
-export type Layer = { areas: FeatureCollection; schools: FeatureCollection }
+export type Layer = { areas: FeatureCollection; schools: FeatureCollection; changed?: FeatureCollection }
 
 type Props = {
   datasets: Record<string, Layer> | null
@@ -25,6 +25,7 @@ type Props = {
   band: Band
   compare: boolean
   programs: boolean
+  changes: boolean
   position: [number, number] | null
   focusSelection: boolean
   // pixels of map hidden under the panel, so fitting and panning keep content visible
@@ -80,7 +81,7 @@ function highSchoolText(p: Record<string, any>) {
 
 // Curved arrow from one school to another, built in screen space so the curve and the arrowhead keep
 // a constant on-screen size; rebuilt on zoom. Returns null when the two schools are too close to draw.
-function arrowLayers(lf: typeof Leaflet, m: Leaflet.Map, move: ProgramMove): Leaflet.Layer[] | null {
+function arrowLayers(lf: typeof Leaflet, m: Leaflet.Map, move: ProgramMove & { detail?: string }): Leaflet.Layer[] | null {
   const a = m.latLngToLayerPoint([move.from[1], move.from[0]]), b = m.latLngToLayerPoint([move.to[1], move.to[0]])
   const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy)
   if (len < 24) return null
@@ -95,10 +96,13 @@ function arrowLayers(lf: typeof Leaflet, m: Leaflet.Map, move: ProgramMove): Lea
   const bx = tip.x - (ux / ul) * 12, by = tip.y - (uy / ul) * 12, px = (-uy / ul) * 6, py = (ux / ul) * 6
   const ll = (p: { x: number; y: number }) => m.layerPointToLatLng(lf.point(p.x, p.y))
   const line = pts.map(ll)
-  const tipText = `${move.program}: ${move.fromName} → ${move.toName}`
+  const tipText = move.kind === 'closure'
+    ? `${move.fromName} closes → students go to ${move.toName}${move.detail ? '. ' + move.detail : ''}`
+    : `${move.program}: ${move.fromName} → ${move.toName}`
   return [
     lf.polyline(line, { pane: 'arrows', color: '#ffffff', weight: 7, opacity: 0.9, interactive: false }),
-    lf.polyline(line, { pane: 'arrows', color: move.color, weight: 3.5, opacity: 0.95 }).bindTooltip(tipText, { sticky: true, className: 'hover-tip' }),
+    lf.polyline(line, { pane: 'arrows', color: move.color, weight: 3.5, opacity: 0.95, dashArray: move.kind === 'closure' ? '7 5' : undefined })
+      .bindTooltip(tipText, { sticky: true, className: 'hover-tip school-tip' }),
     lf.polygon([ll(tip), ll({ x: bx + px, y: by + py }), ll({ x: bx - px, y: by - py })],
       { pane: 'arrows', color: '#ffffff', weight: 1.5, fillColor: move.color, fillOpacity: 1, interactive: false }),
   ]
@@ -106,7 +110,7 @@ function arrowLayers(lf: typeof Leaflet, m: Leaflet.Map, move: ProgramMove): Lea
 
 const mapLabel = (name: string) => name.replace(/ Elementary$/, '')
 
-export function BoundaryMap({ datasets, scenario, band, compare, programs, position, focusSelection, panelInset, onSelect }: Props) {
+export function BoundaryMap({ datasets, scenario, band, compare, programs, changes, position, focusSelection, panelInset, onSelect }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const L = useRef<typeof Leaflet | null>(null)
   const map = useRef<Leaflet.Map | null>(null)
@@ -132,10 +136,15 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, posit
         maxNativeZoom: 16,
         attribution: 'Basemap © Esri, HERE, Garmin, © OpenStreetMap contributors · Boundaries traced from PPS scenario maps',
       }).on('tileerror', () => setError('Basemap tiles could not load. Boundaries remain available.')).addTo(m)
-      for (const [name, z] of [['shading', 390], ['areas', 400], ['compare', 450], ['arrows', 580], ['sites', 590], ['schools', 600], ['reference', 620], ['labels', 650]] as const) {
+      for (const [name, z] of [['shading', 390], ['changed', 395], ['areas', 400], ['compare', 450], ['arrows', 580], ['sites', 590], ['schools', 600], ['reference', 620], ['labels', 650]] as const) {
         m.createPane(name).style.zIndex = String(z)
       }
       m.getPane('reference')!.style.pointerEvents = 'none'
+      // permanent area/school labels must never cover hover tooltips: keep them under Leaflet's
+      // tooltip pane (650 by default, the same z as 'labels', and later in the DOM) and let the
+      // pointer pass through them to the shapes underneath
+      m.getPane('labels')!.style.pointerEvents = 'none'
+      m.getPane('tooltipPane')!.style.zIndex = '700'
       // street names drawn above the coloured areas so they stay readable
       lf.tileLayer(ESRI + 'World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { pane: 'reference', maxZoom: 18, maxNativeZoom: 16 }).addTo(m)
       m.on('click', (e) => select.current([e.latlng.lat, e.latlng.lng]))
@@ -196,6 +205,12 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, posit
     added.push(lf.geoJSON(d.schools, {
       pointToLayer(f, ll) {
         const kind = f.properties?.kind
+        if (kind === 'closed') {
+          return lf.marker(ll, {
+            pane: 'schools', keyboard: false,
+            icon: lf.divIcon({ className: 'closed-icon', html: '×', iconSize: [20, 20], iconAnchor: [10, 10] }),
+          }).bindTooltip(schoolTip(String(f.properties?.name ?? ''), scenario), { className: 'hover-tip school-tip' })
+        }
         return lf.circleMarker(ll, {
           pane: 'schools',
           radius: kind === 'closed' ? 4 : 5,
@@ -239,6 +254,35 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, posit
       labels.current = null
     }
   }, [ready, datasets, scenario, band, compare])
+
+  // Where the assigned school changes from status quo (hatched), and closure arrows to receiving schools.
+  useEffect(() => {
+    const lf = L.current, m = map.current
+    if (!ready || !lf || !m || !datasets || !changes || scenario === 'sq') return
+    const d = datasets[`${scenario}_${band}`]
+    const added: Leaflet.Layer[] = []
+    if (d.changed) {
+      added.push(lf.geoJSON(d.changed, {
+        pane: 'changed',
+        interactive: false,
+        // the hatch pattern is defined in the <svg> rendered below; CSS points the fill at it
+        style: { className: 'changed-area', stroke: true, color: '#17232c', weight: 1.5, opacity: 0.7, dashArray: '2 3', fillOpacity: 1 },
+      }).addTo(m))
+    }
+    const moves = closureMoves(scenario, { scenarioSchools: d.schools, sqSchools: datasets[`sq_${band}`]?.schools })
+    const arrows = lf.layerGroup().addTo(m)
+    added.push(arrows)
+    const draw = () => {
+      arrows.clearLayers()
+      for (const mv of moves) for (const l of arrowLayers(lf, m, mv) ?? []) arrows.addLayer(l)
+    }
+    draw()
+    m.on('zoomend', draw)
+    return () => {
+      m.off('zoomend', draw)
+      for (const l of added) m.removeLayer(l)
+    }
+  }, [ready, datasets, scenario, band, changes])
 
   // Immersion overlay: language rings around immersion schools, labels, and arrows for program moves.
   useEffect(() => {
@@ -296,6 +340,14 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, posit
 
   return (
     <div className="map-wrap">
+      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+        <defs>
+          <pattern id="hatch-change" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)">
+            <rect width="7" height="7" fill="#17232c" fillOpacity="0.06" />
+            <line x1="0" y1="0" x2="0" y2="7" stroke="#17232c" strokeWidth="2" strokeOpacity="0.45" />
+          </pattern>
+        </defs>
+      </svg>
       <div ref={container} className="map" aria-label="Map of attendance boundaries. Click to compare schools at a location." />
       {error && <p className="map-error" role="alert">{error}</p>}
     </div>
