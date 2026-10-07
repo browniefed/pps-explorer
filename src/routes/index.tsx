@@ -318,6 +318,11 @@ function Home() {
               <p className="sub">Proposed scenarios for school year 2027–28</p>
             </header>
           </div>
+          {/* outside the drag zone so the link is tappable on phones */}
+          <p className="contact">
+            Built by Jason Brown. Wrong boundary or a question? Email{' '}
+            <a href="mailto:browniefed@gmail.com?subject=PPS%20School%20Explorer">browniefed@gmail.com</a>
+          </p>
           <Segmented label="Scenario" value={scenario} keys={scenarios} options={SCENARIO_NAMES} onChange={setScenario} large />
         </div>
 
@@ -405,6 +410,7 @@ function Home() {
             Confirm addresses near a boundary with PPS; lottery and immersion placements are separate.
           </p>
           <p>Address searches go straight from your browser to Esri’s geocoder and aren’t saved by this site.</p>
+          <p>This site isn’t affiliated with PPS.</p>
         </footer>
         </div>
       </aside>
