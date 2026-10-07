@@ -49,7 +49,7 @@ test('Rigler stays open: its notes explain the Scott program move and the missin
   assert.equal(results.a.k5.school, 'Scott Elementary')
   const notes = spotNotes('a', results, areaNames).map((n) => n.text)
   assert(notes.some((t) => t === 'Spanish immersion moves here from Scott.'), notes.join('\n'))
-  assert(notes.some((t) => t.startsWith('Rigler stays open, but on the Scenario A map it has no attendance area of its own')), notes.join('\n'))
+  assert(notes.some((t) => t.startsWith('Rigler is not closing.')), notes.join('\n'))
 })
 
 test('scenario differences: Lewis closes only in A, and B explains that it stays open', () => {

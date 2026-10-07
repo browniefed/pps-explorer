@@ -5,6 +5,7 @@ import { BoundaryMap, CLUSTERS, type Layer } from '../components/BoundaryMap'
 import { assignmentsAt, bands, scenarios, shortName, type Assignment, type Band, type Scenario } from '../lib/assignments.mjs'
 import { describe, digest, schoolKey, spotNotes, type ChangeEvent } from '../lib/changes.mjs'
 import { SUMMARY } from '../lib/changes-data.mjs'
+import { PROGRAM_COLORS } from '../lib/programs.mjs'
 
 export const Route = createFileRoute('/')({ component: Home })
 
@@ -20,11 +21,11 @@ const MOBILE = '(max-width: 720px)'
 type Sheet = 'peek' | 'half' | 'full'
 const sheetHeights = (peek: number, vh: number): Record<Sheet, number> => ({ peek, half: Math.round(vh * 0.5), full: Math.round(vh * 0.88) })
 
-type HashState = { scenario: Scenario; band: Band; compare: boolean; position: [number, number] | null }
+type HashState = { scenario: Scenario; band: Band; compare: boolean; programs: boolean; position: [number, number] | null }
 
 function readHash(): Partial<HashState> {
   const h = new URLSearchParams(window.location.hash.slice(1))
-  const out: Partial<HashState> = { compare: h.get('cmp') === '1' }
+  const out: Partial<HashState> = { compare: h.get('cmp') === '1', programs: h.get('imm') !== '0' }
   const s = h.get('s'), g = h.get('g')
   if (s && s in SCENARIO_NAMES) out.scenario = s as Scenario
   if (g && g in BAND_NAMES) out.band = g as Band
@@ -33,9 +34,10 @@ function readHash(): Partial<HashState> {
   return out
 }
 
-function writeHash({ scenario, band, compare, position }: HashState) {
+function writeHash({ scenario, band, compare, programs, position }: HashState) {
   const parts = [`s=${scenario}`, `g=${band}`]
   if (compare) parts.push('cmp=1')
+  if (!programs) parts.push('imm=0')
   if (position) parts.push(`pt=${position[0].toFixed(5)},${position[1].toFixed(5)}`)
   window.history.replaceState(null, '', '#' + parts.join('&'))
 }
@@ -138,6 +140,7 @@ function Home() {
   const [scenario, setScenario] = useState<Scenario>('sq')
   const [band, setBand] = useState<Band>('k5')
   const [compare, setCompare] = useState(false)
+  const [programs, setPrograms] = useState(true)
   const [position, setPosition] = useState<[number, number] | null>(null)
   const [focusSelection, setFocusSelection] = useState(false)
   const [locationName, setLocationName] = useState('')
@@ -215,11 +218,12 @@ function Home() {
     if (h.scenario) setScenario(h.scenario)
     if (h.band) setBand(h.band)
     setCompare(!!h.compare)
+    setPrograms(h.programs !== false)
     if (h.position) { setPosition(h.position); setFocusSelection(true); setLocationName('Shared location') }
     if (window.matchMedia(MOBILE).matches && !h.position) setSheet('peek')
     setHydrated(true)
   }, [])
-  useEffect(() => { if (hydrated) writeHash({ scenario, band, compare, position }) }, [hydrated, scenario, band, compare, position])
+  useEffect(() => { if (hydrated) writeHash({ scenario, band, compare, programs, position }) }, [hydrated, scenario, band, compare, programs, position])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -251,7 +255,10 @@ function Home() {
   // which schools have an attendance area on each map, to explain schools that stay open without one
   const areaNames = useMemo(() => Object.fromEntries(Object.entries(datasets ?? {}).map(([k, v]) =>
     [k, new Set(v.areas.features.map((f) => schoolKey(String(f.properties?.name ?? ''))))])), [datasets])
-  const notes = spotNotes(scenario, results, areaNames)
+  // map label per school, so notes can say what an area-less school keeps ("Rigler K-5 Spanish Immersion")
+  const labels = useMemo(() => Object.fromEntries(Object.entries(datasets ?? {}).map(([k, v]) =>
+    [k, Object.fromEntries(v.schools.features.map((f) => [schoolKey(String(f.properties?.name ?? '')), String(f.properties?.name ?? '')]))])), [datasets])
+  const notes = spotNotes(scenario, results, areaNames, labels)
 
   // Jump to a school named in the change lists: select its location so the lookup explains it.
   const goToSchool = (name: string) => {
@@ -302,7 +309,7 @@ function Home() {
 
   return (
     <main>
-      <BoundaryMap datasets={datasets} scenario={scenario} band={band} compare={compare} position={position}
+      <BoundaryMap datasets={datasets} scenario={scenario} band={band} compare={compare} programs={programs} position={position}
         focusSelection={focusSelection} panelInset={panelInset} onSelect={select} />
 
       <aside className={dragHeight !== null ? 'panel dragging' : 'panel'} ref={panel} data-sheet={mobile ? sheet : undefined}
@@ -333,6 +340,25 @@ function Home() {
           <input type="checkbox" checked={compare} disabled={scenario === 'sq'} onChange={(e) => setCompare(e.target.checked)} />
           <span>Show status quo lines on top (dotted)</span>
         </label>
+
+        <label className="check">
+          <input type="checkbox" checked={programs} onChange={(e) => setPrograms(e.target.checked)} />
+          <span>Show immersion programs{scenario !== 'sq' ? ' and where they move' : ''}</span>
+        </label>
+        {programs && (
+          <div className="program-key">
+            <ul>
+              {Object.entries(PROGRAM_COLORS).filter(([k]) => scenario !== 'sq' || !['Deaf and Hard of Hearing', 'Odyssey'].includes(k)).map(([k, color]) => (
+                <li key={k}><span className="ring" style={{ borderColor: color }} />{k === 'Deaf and Hard of Hearing' ? 'Deaf/Hard of Hearing' : k}</li>
+              ))}
+              <li className="wide"><span className="ring dashed" />Immersion only: no neighborhood area</li>
+            </ul>
+            <p className="hint">
+              Rings mark immersion schools{scenario !== 'sq' ? '; arrows show a program moving to a new school' : ''}. Labels appear when you zoom in.
+              {band === 'k5' && scenario !== 'sq' && ' Rigler, Kelly and César Chávez stay open as immersion schools; their current neighborhoods are assigned to Scott, Lent and Rosa Parks.'}
+            </p>
+          </div>
+        )}
 
         <form className="search" role="search" onSubmit={search}>
           <label htmlFor="address" className="control-label">Look up an address</label>

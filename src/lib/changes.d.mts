@@ -9,5 +9,5 @@ export function schoolKey(name: string): string
 export function describe(e: ChangeEvent, key?: string): string
 export function eventsFor(scenario: Scenario, name: string): ChangeEvent[]
 export function closes(scenario: Scenario, name: string): boolean
-export function spotNotes(scenario: Scenario, results: Assignments | null, areaNames: Record<string, Set<string>>): SpotNote[]
+export function spotNotes(scenario: Scenario, results: Assignments | null, areaNames: Record<string, Set<string>>, labels?: Record<string, Record<string, string>>): SpotNote[]
 export function digest(scenario: Scenario): { closures: ChangeEvent[]; programs: ChangeEvent[]; grades: ChangeEvent[]; notes: ChangeEvent[] }

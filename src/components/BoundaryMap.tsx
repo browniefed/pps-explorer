@@ -3,6 +3,7 @@ import type * as Leaflet from 'leaflet'
 import type { Feature, FeatureCollection, Polygon, MultiPolygon } from 'geojson'
 import type { Band, Scenario } from '../lib/assignments.mjs'
 import { describe, eventsFor, schoolKey } from '../lib/changes.mjs'
+import { immersionSites, PROGRAM_COLORS, programMoves, type ProgramMove } from '../lib/programs.mjs'
 
 // Fill colours taken from the PPS map legend.
 export const CLUSTERS: Record<string, string> = {
@@ -23,6 +24,7 @@ type Props = {
   scenario: Scenario
   band: Band
   compare: boolean
+  programs: boolean
   position: [number, number] | null
   focusSelection: boolean
   // pixels of map hidden under the panel, so fitting and panning keep content visible
@@ -76,9 +78,35 @@ function highSchoolText(p: Record<string, any>) {
   return `High school: ${parts.slice(0, -1).join(', ')} or ${parts.at(-1)}, by address`
 }
 
+// Curved arrow from one school to another, built in screen space so the curve and the arrowhead keep
+// a constant on-screen size; rebuilt on zoom. Returns null when the two schools are too close to draw.
+function arrowLayers(lf: typeof Leaflet, m: Leaflet.Map, move: ProgramMove): Leaflet.Layer[] | null {
+  const a = m.latLngToLayerPoint([move.from[1], move.from[0]]), b = m.latLngToLayerPoint([move.to[1], move.to[0]])
+  const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy)
+  if (len < 24) return null
+  const bend = Math.min(0.2 * len, 90)
+  const c = { x: (a.x + b.x) / 2 - (dy / len) * bend, y: (a.y + b.y) / 2 + (dx / len) * bend }
+  const at = (t: number) => ({ x: (1 - t) ** 2 * a.x + 2 * (1 - t) * t * c.x + t ** 2 * b.x, y: (1 - t) ** 2 * a.y + 2 * (1 - t) * t * c.y + t ** 2 * b.y })
+  // stop short of both school markers
+  const t0 = 10 / len, t1 = 1 - 15 / len
+  const pts = Array.from({ length: 25 }, (_, i) => at(t0 + ((t1 - t0) * i) / 24))
+  const tip = pts[pts.length - 1], prev = pts[pts.length - 2]
+  const ux = tip.x - prev.x, uy = tip.y - prev.y, ul = Math.hypot(ux, uy) || 1
+  const bx = tip.x - (ux / ul) * 12, by = tip.y - (uy / ul) * 12, px = (-uy / ul) * 6, py = (ux / ul) * 6
+  const ll = (p: { x: number; y: number }) => m.layerPointToLatLng(lf.point(p.x, p.y))
+  const line = pts.map(ll)
+  const tipText = `${move.program}: ${move.fromName} → ${move.toName}`
+  return [
+    lf.polyline(line, { pane: 'arrows', color: '#ffffff', weight: 7, opacity: 0.9, interactive: false }),
+    lf.polyline(line, { pane: 'arrows', color: move.color, weight: 3.5, opacity: 0.95 }).bindTooltip(tipText, { sticky: true, className: 'hover-tip' }),
+    lf.polygon([ll(tip), ll({ x: bx + px, y: by + py }), ll({ x: bx - px, y: by - py })],
+      { pane: 'arrows', color: '#ffffff', weight: 1.5, fillColor: move.color, fillOpacity: 1, interactive: false }),
+  ]
+}
+
 const mapLabel = (name: string) => name.replace(/ Elementary$/, '')
 
-export function BoundaryMap({ datasets, scenario, band, compare, position, focusSelection, panelInset, onSelect }: Props) {
+export function BoundaryMap({ datasets, scenario, band, compare, programs, position, focusSelection, panelInset, onSelect }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const L = useRef<typeof Leaflet | null>(null)
   const map = useRef<Leaflet.Map | null>(null)
@@ -104,7 +132,7 @@ export function BoundaryMap({ datasets, scenario, band, compare, position, focus
         maxNativeZoom: 16,
         attribution: 'Basemap © Esri, HERE, Garmin, © OpenStreetMap contributors · Boundaries traced from PPS scenario maps',
       }).on('tileerror', () => setError('Basemap tiles could not load. Boundaries remain available.')).addTo(m)
-      for (const [name, z] of [['shading', 390], ['areas', 400], ['compare', 450], ['schools', 600], ['reference', 620], ['labels', 650]] as const) {
+      for (const [name, z] of [['shading', 390], ['areas', 400], ['compare', 450], ['arrows', 580], ['sites', 590], ['schools', 600], ['reference', 620], ['labels', 650]] as const) {
         m.createPane(name).style.zIndex = String(z)
       }
       m.getPane('reference')!.style.pointerEvents = 'none'
@@ -198,6 +226,8 @@ export function BoundaryMap({ datasets, scenario, band, compare, position, focus
       m.fitBounds(lf.geoJSON(datasets.sq_912.areas).getBounds(), {
         paddingTopLeft: [panelInset.left, 0],
         paddingBottomRight: [0, panelInset.bottom],
+        // instant: an animated fit still running when a shared link zooms to its point would win and undo it
+        animate: false,
       })
     }
 
@@ -209,6 +239,46 @@ export function BoundaryMap({ datasets, scenario, band, compare, position, focus
       labels.current = null
     }
   }, [ready, datasets, scenario, band, compare])
+
+  // Immersion overlay: language rings around immersion schools, labels, and arrows for program moves.
+  useEffect(() => {
+    const lf = L.current, m = map.current
+    if (!ready || !lf || !m || !datasets || !programs) return
+    const d = datasets[`${scenario}_${band}`]
+    const areaKeys = new Set(d.areas.features.map((f) => schoolKey(String(f.properties?.name ?? ''))))
+    const sites = immersionSites(d.schools, areaKeys)
+    const rings = lf.layerGroup()
+    const siteLabels = lf.layerGroup()
+    for (const site of sites) {
+      const ll: [number, number] = [site.coords[1], site.coords[0]]
+      site.languages.forEach((lang, i) => rings.addLayer(lf.circleMarker(ll, {
+        pane: 'sites', interactive: false, radius: 10 + i * 4, weight: 3, fill: false, color: PROGRAM_COLORS[lang] ?? '#495057',
+        // dashed: immersion-only school with no neighbourhood area of its own on this map
+        dashArray: site.ownArea ? undefined : '4 3',
+      })))
+      const tip = document.createElement('span')
+      tip.textContent = `${site.short} · ${site.languages.join(' & ')}`
+      tip.style.color = PROGRAM_COLORS[site.languages[0]] ?? '#495057'
+      siteLabels.addLayer(lf.tooltip({ permanent: true, direction: 'right', offset: [12, 0], className: 'site-label', pane: 'labels', interactive: false })
+        .setLatLng(ll).setContent(tip))
+    }
+    rings.addTo(m)
+    const moves = scenario === 'sq' ? [] : programMoves(scenario, { scenarioSchools: d.schools, sqSchools: datasets[`sq_${band}`]?.schools })
+    const arrows = lf.layerGroup().addTo(m)
+    const draw = () => {
+      arrows.clearLayers()
+      for (const mv of moves) for (const l of arrowLayers(lf, m, mv) ?? []) arrows.addLayer(l)
+      const on = m.getZoom() >= 12
+      if (on && !m.hasLayer(siteLabels)) siteLabels.addTo(m)
+      if (!on && m.hasLayer(siteLabels)) m.removeLayer(siteLabels)
+    }
+    draw()
+    m.on('zoomend', draw)
+    return () => {
+      m.off('zoomend', draw)
+      for (const l of [rings, arrows, siteLabels]) m.removeLayer(l)
+    }
+  }, [ready, datasets, scenario, band, programs])
 
   // Selected point: pin it, and move the map to it when it came from an address search or a shared link.
   useEffect(() => {

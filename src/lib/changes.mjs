@@ -61,7 +61,9 @@ export function closes(scenario, name) {
 // Notes for a selected spot: what happens to the schools that serve it today and under the scenario.
 // `results` is assignmentsAt() output; `areaNames` maps "<scenario>_<band>" to the set of school keys
 // that have an attendance area on that map (to spot schools that stay open without one, like Rigler).
-export function spotNotes(scenario, results, areaNames) {
+// `labels` optionally maps "<scenario>_<band>" to { schoolKey: map label }, to name the program such a
+// school keeps ("Rigler K-5 Spanish Immersion").
+export function spotNotes(scenario, results, areaNames, labels = {}) {
   if (scenario === 'sq' || !results) return []
   const notes = [], seen = new Set()
   const add = (school, text) => {
@@ -76,8 +78,12 @@ export function spotNotes(scenario, results, areaNames) {
     if (before && after && before !== after) {
       const key = schoolKey(before)
       const explained = eventsFor(scenario, before).some((e) => e.kind === 'close' || (e.kind === 'grades' && schoolKey(e.school) === key))
-      if (!explained && !areaNames[`${scenario}_${b}`]?.has(key))
-        add(short(before), `${short(before)} stays open, but on the Scenario ${scenario.toUpperCase()} map it has no attendance area of its own; this spot is in ${short(after)}’s area.`)
+      if (!explained && !areaNames[`${scenario}_${b}`]?.has(key)) {
+        const label = labels[`${scenario}_${b}`]?.[key] ?? ''
+        const langs = [...label.matchAll(/(Spanish|Mandarin|Vietnamese|Japanese|Russian) Immersion/g)].map((m) => m[1])
+        const as = langs.length ? ` as a ${langs.join(' and ')} immersion school` : ''
+        add(short(before), `${short(before)} is not closing. It stays open${as}, but on the Scenario ${scenario.toUpperCase()} map it has no neighborhood boundary of its own, so this spot is assigned to ${short(after)}.`)
+      }
     }
     // today's school first, then the school this spot is assigned to under the scenario
     for (const name of [before, after]) {
