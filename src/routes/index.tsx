@@ -3,13 +3,13 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import type { FeatureCollection } from 'geojson'
 import { BoundaryMap, CLUSTERS, type DliReach, type Layer } from '../components/BoundaryMap'
 import { assignmentsAt, bands, scenarios, shortName, type Assignment, type Band, type Scenario } from '../lib/assignments.mjs'
-import { describe, digest, schoolKey, spotNotes, type ChangeEvent } from '../lib/changes.mjs'
+import { describe, digest, programName, schoolKey, spotNotes, type ChangeEvent } from '../lib/changes.mjs'
 import { SUMMARY } from '../lib/changes-data.mjs'
+import { initialLang, LANGS, list, pct as fmtPct, t, type Lang } from '../lib/i18n.mjs'
 import { PROGRAM_COLORS } from '../lib/programs.mjs'
 
 export const Route = createFileRoute('/')({ component: Home })
 
-const SCENARIO_NAMES: Record<Scenario, string> = { sq: 'Status quo', a: 'Scenario A', b: 'Scenario B' }
 const BAND_NAMES: Record<Band, string> = { k5: 'K–5', '68': '6–8', '912': '9–12' }
 // source PDFs in public/maps use these names
 const PDF_SCENARIO: Record<Scenario, string> = { sq: 'current', a: 'a', b: 'b' }
@@ -21,25 +21,27 @@ const MOBILE = '(max-width: 720px)'
 type Sheet = 'peek' | 'half' | 'full'
 const sheetHeights = (peek: number, vh: number): Record<Sheet, number> => ({ peek, half: Math.round(vh * 0.5), full: Math.round(vh * 0.88) })
 
-type HashState = { scenario: Scenario; band: Band; compare: boolean; programs: boolean; changes: boolean; dliReach: boolean; position: [number, number] | null }
+type HashState = { scenario: Scenario; band: Band; compare: boolean; programs: boolean; changes: boolean; dliReach: boolean; lang: Lang; position: [number, number] | null }
+type HashRead = Partial<Omit<HashState, 'lang'>> & { lang?: string | null }
 
-function readHash(): Partial<HashState> {
+function readHash(): HashRead {
   const h = new URLSearchParams(window.location.hash.slice(1))
-  const out: Partial<HashState> = { compare: h.get('cmp') === '1', programs: h.get('imm') !== '0', changes: h.get('chg') !== '0', dliReach: h.get('dli') === '1' }
+  const out: HashRead = { compare: h.get('cmp') === '1', programs: h.get('imm') !== '0', changes: h.get('chg') !== '0', dliReach: h.get('dli') === '1', lang: h.get('lang') }
   const s = h.get('s'), g = h.get('g')
-  if (s && s in SCENARIO_NAMES) out.scenario = s as Scenario
+  if (s && (scenarios as readonly string[]).includes(s)) out.scenario = s as Scenario
   if (g && g in BAND_NAMES) out.band = g as Band
   const pt = (h.get('pt') ?? '').split(',').map(Number)
   if (pt.length === 2 && pt.every(Number.isFinite)) out.position = [pt[0], pt[1]]
   return out
 }
 
-function writeHash({ scenario, band, compare, programs, changes, dliReach, position }: HashState) {
+function writeHash({ scenario, band, compare, programs, changes, dliReach, lang, position }: HashState) {
   const parts = [`s=${scenario}`, `g=${band}`]
   if (compare) parts.push('cmp=1')
   if (!programs) parts.push('imm=0')
   if (!changes) parts.push('chg=0')
   if (dliReach) parts.push('dli=1')
+  if (lang !== 'en') parts.push(`lang=${lang}`)
   if (position) parts.push(`pt=${position[0].toFixed(5)},${position[1].toFixed(5)}`)
   window.history.replaceState(null, '', '#' + parts.join('&'))
 }
@@ -70,109 +72,109 @@ function Segmented<T extends string>({ label, value, keys, options, onChange, la
   )
 }
 
-function Cell({ a }: { a: Assignment }) {
+function Cell({ a, lang }: { a: Assignment; lang: Lang }) {
   const name = a.status === 'unclear' && a.school && a.alternatives
-    ? `${shortName(a.alternatives[0]).replace(/ K-8$/, '')} or ${shortName(a.school)}?`
-    : a.school ? shortName(a.school) : a.status === 'ambiguous' ? 'Overlapping areas' : 'Outside district'
+    ? t(lang, 'cellOr', { a: shortName(a.alternatives[0]).replace(/ K-8$/, ''), b: shortName(a.school) })
+    : a.school ? shortName(a.school) : t(lang, a.status === 'ambiguous' ? 'cellOverlap' : 'cellOutside')
   const cls = [a.changed ? 'changed' : '', a.school ? '' : 'none'].filter(Boolean).join(' ')
   return (
-    <td className={cls || undefined} title={a.status === 'near-boundary' ? 'This spot is on a boundary line; nearest area shown.'
-      : a.status === 'unclear' ? 'PPS’s scenario map draws both schools inside one boundary; see the note below.' : undefined}>
+    <td className={cls || undefined} title={a.status === 'near-boundary' ? t(lang, 'cellNearTitle')
+      : a.status === 'unclear' ? t(lang, 'cellUnclearTitle') : undefined}>
       {name}{a.status === 'near-boundary' && ' *'}
     </td>
   )
 }
 
-const pct = (x: number) => `${Math.round(x * 100)}%`
 
 // School names in a change list are buttons that jump to that school on the map.
-function SchoolLinks({ names, onGo }: { names: string[]; onGo: (name: string) => void }) {
+function SchoolLinks({ names, onGo, lang }: { names: string[]; onGo: (name: string) => void; lang: Lang }) {
+  const and = lang === 'es' ? ' y ' : ' and '
   return <>{names.map((n, i) => (
-    <span key={n}>{i > 0 && (i === names.length - 1 ? ' and ' : ', ')}<button type="button" className="link" onClick={() => onGo(n)}>{n}</button></span>
+    <span key={n}>{i > 0 && (i === names.length - 1 ? and : ', ')}<button type="button" className="link" onClick={() => onGo(n)}>{n}</button></span>
   ))}</>
 }
 
-function ChangeItem({ e, onGo }: { e: ChangeEvent; onGo: (name: string) => void }) {
+function ChangeItem({ e, onGo, lang }: { e: ChangeEvent; onGo: (name: string) => void; lang: Lang }) {
+  const detail = e.kind === 'close' || e.kind === 'program' ? (lang === 'es' && e.detail_es) || e.detail : undefined
   switch (e.kind) {
     case 'close':
-      return <li><SchoolLinks names={[e.school]} onGo={onGo} />{e.to && <> → <SchoolLinks names={e.to} onGo={onGo} /></>}{e.detail && <span className="detail"> {e.detail}</span>}</li>
-    case 'program':
-      return <li>{e.program}: <SchoolLinks names={e.from} onGo={onGo} /> → <SchoolLinks names={[e.to]} onGo={onGo} />{e.detail && <span className="detail"> {e.detail}</span>}</li>
+      return <li><SchoolLinks names={[e.school]} onGo={onGo} lang={lang} />{e.to && <> → <SchoolLinks names={e.to} onGo={onGo} lang={lang} /></>}{detail && <span className="detail"> {detail}</span>}</li>
+    case 'program': {
+      const name = programName(e.program, lang)
+      return <li>{name.charAt(0).toUpperCase() + name.slice(1)}: <SchoolLinks names={e.from} onGo={onGo} lang={lang} /> → <SchoolLinks names={[e.to]} onGo={onGo} lang={lang} />{detail && <span className="detail"> {detail}</span>}</li>
+    }
     case 'grades':
-      return <li><SchoolLinks names={[e.school]} onGo={onGo} /> 6–8 → <SchoolLinks names={[e.to]} onGo={onGo} /></li>
+      return <li><SchoolLinks names={[e.school]} onGo={onGo} lang={lang} /> 6–8 → <SchoolLinks names={[e.to]} onGo={onGo} lang={lang} /></li>
     default:
-      return <li>{describe(e)}</li>
+      return <li>{describe(e, undefined, lang)}</li>
   }
 }
 
-function Changes({ scenario, onGo }: { scenario: Scenario; onGo: (name: string) => void }) {
+function Changes({ scenario, onGo, lang }: { scenario: Scenario; onGo: (name: string) => void; lang: Lang }) {
   const sum = SUMMARY[scenario]
+  const p = (x: number) => fmtPct(lang, x)
   if (scenario === 'sq') {
     return (
       <section className="changes">
-        <h2>What changes in status quo</h2>
-        <p className="hint">Nothing: no schools close and no boundaries change. PPS projects {pct(sum.studentsInSustainableSchools)} of students would attend a school above its sustainability threshold by 2031–32.</p>
+        <h2>{t(lang, 'changesTitleSq')}</h2>
+        <p className="hint">{t(lang, 'changesSq', { share: p(sum.studentsInSustainableSchools) })}</p>
       </section>
     )
   }
   const d = digest(scenario)
   const groups: [string, ChangeEvent[]][] = [
-    [`Schools closing (${d.closures.length})`, d.closures],
-    ['Program moves', d.programs],
-    ['Grades 6–8 move (school becomes K–5)', d.grades],
-    ['Other changes', d.notes],
+    [t(lang, 'groupClosing', { n: d.closures.length }), d.closures],
+    [t(lang, 'groupPrograms'), d.programs],
+    [t(lang, 'groupGrades'), d.grades],
+    [t(lang, 'groupOther'), d.notes],
   ]
   return (
     <section className="changes">
-      <h2>What changes in {SCENARIO_NAMES[scenario]}</h2>
+      <h2>{t(lang, 'changesTitle', { scenario: t(lang, `scenario.${scenario}`) })}</h2>
       <p className="hint">
-        {sum.closures} closures, {sum.boundaryChanges} schools with boundary changes, about {pct(sum.studentsChangingSchools)} of K–8 students
-        change schools. PPS projects {pct(sum.studentsInSustainableSchools)} of students would attend a school above its sustainability
-        threshold by 2031–32 (status quo: {pct(SUMMARY.sq.studentsInSustainableSchools)}).
+        {t(lang, 'changesSummary', { closures: sum.closures, boundary: sum.boundaryChanges, moving: p(sum.studentsChangingSchools),
+          share: p(sum.studentsInSustainableSchools), sqShare: p(SUMMARY.sq.studentsInSustainableSchools) })}
       </p>
       {groups.map(([title, events]) => events.length > 0 && (
         <details key={title}>
           <summary>{title}</summary>
-          <ul className="change-list">{events.map((e, i) => <ChangeItem key={i} e={e} onGo={onGo} />)}</ul>
+          <ul className="change-list">{events.map((e, i) => <ChangeItem key={i} e={e} onGo={onGo} lang={lang} />)}</ul>
         </details>
       ))}
-      <p className="hint">From the PPS board memo and regional summaries for October 6, 2026.</p>
+      <p className="hint">{t(lang, 'changesSource')}</p>
     </section>
   )
 }
 
 // Share of PPS land within 1 mile (straight line) of a Spanish DLI elementary school, 2022 to the scenario shown.
-function DliSummary({ dli, scenario }: { dli: DliReach; scenario: Scenario }) {
-  const rows: [string, '2022' | Scenario][] = [['2022', '2022'], ['Today (2025–26)', 'sq']]
-  if (scenario !== 'sq') rows.push([SCENARIO_NAMES[scenario], scenario])
+function DliSummary({ dli, scenario, lang }: { dli: DliReach; scenario: Scenario; lang: Lang }) {
+  const rows: [string, '2022' | Scenario][] = [['2022', '2022'], [t(lang, 'dliToday'), 'sq']]
+  if (scenario !== 'sq') rows.push([t(lang, `scenario.${scenario}`), scenario])
   const now = new Set(dli.periods[scenario].sites.map((x) => x.name))
   const lost = dli.periods['2022'].sites.filter((x) => !now.has(x.name)).map((x) => x.name.replace(' Creative Science', ''))
+  const when = scenario === 'sq' ? t(lang, 'dliWhenToday') : t(lang, 'dliWhenIn', { scenario: t(lang, `scenario.${scenario}`) })
   return (
     <div className="program-key dli-key">
       <ul>
-        <li className="wide"><span className="ring dli-ring" />Within 1 mile of a Spanish immersion elementary school {scenario === 'sq' ? 'today' : `in ${SCENARIO_NAMES[scenario]}`}</li>
-        <li className="wide"><span className="ring dli-lost" />Had Spanish immersion in 2022, not {scenario === 'sq' ? 'today' : `in ${SCENARIO_NAMES[scenario]}`}: {lost.join(', ')}</li>
+        <li className="wide"><span className="ring dli-ring" />{t(lang, 'dliNow', { when })}</li>
+        <li className="wide"><span className="ring dli-lost" />{t(lang, 'dliLost', { when, lost: list(lang, lost) })}</li>
       </ul>
       <table className="dli-table">
-        <thead><tr><th scope="col">Period</th><th scope="col">Schools</th><th scope="col">PPS land within 1 mile</th></tr></thead>
+        <thead><tr><th scope="col">{t(lang, 'dliPeriod')}</th><th scope="col">{t(lang, 'dliSchools')}</th><th scope="col">{t(lang, 'dliWithin')}</th></tr></thead>
         <tbody>
           {rows.map(([label, p]) => (
-            <tr key={p}><th scope="row">{label}</th><td>{dli.periods[p].sites.length}</td><td>{Math.round(dli.periods[p].reach_share * 100)}% ({dli.periods[p].reach_sq_mi} sq mi)</td></tr>
+            <tr key={p}><th scope="row">{label}</th><td>{dli.periods[p].sites.length}</td><td>{fmtPct(lang, dli.periods[p].reach_share)} ({t(lang, 'dliSqMi', { n: dli.periods[p].reach_sq_mi })})</td></tr>
           ))}
         </tbody>
       </table>
-      <p className="hint">
-        Oregon law requires a school bus for elementary students who live more than 1 mile from school. Circles are straight-line
-        distance, so real walking reach is smaller. They show geography, not how many students are affected: PPS doesn’t publish where
-        immersion students live. An older PPS transportation note says immersion buses outside a school’s own attendance area are
-        limited to native Spanish speakers. Bridger’s Spanish immersion moved to Lent in fall 2023.
-      </p>
+      <p className="hint">{t(lang, 'dliNote')}</p>
     </div>
   )
 }
 
 function Home() {
   const [scenario, setScenario] = useState<Scenario>('sq')
+  const [lang, setLang] = useState<Lang>('en')
   const [band, setBand] = useState<Band>('k5')
   const [compare, setCompare] = useState(false)
   const [programs, setPrograms] = useState(true)
@@ -186,7 +188,7 @@ function Home() {
   const [dataError, setDataError] = useState(false)
   const [address, setAddress] = useState('')
   const [busy, setBusy] = useState(false)
-  const [searchMsg, setSearchMsg] = useState('Or click anywhere on the map.')
+  const [searchMsg, setSearchMsg] = useState<{ key: string } | { text: string }>({ key: 'searchHint' })
   const [mobile, setMobile] = useState(false)
   const [sheet, setSheet] = useState<Sheet>('half')
   const [peekHeight, setPeekHeight] = useState(150)
@@ -259,11 +261,14 @@ function Home() {
     setPrograms(h.programs !== false)
     setChanges(h.changes !== false)
     setDliReach(!!h.dliReach)
-    if (h.position) { setPosition(h.position); setFocusSelection(true); setLocationName('Shared location') }
+    setLang(initialLang(h.lang, navigator.languages))
+    if (h.position) { setPosition(h.position); setFocusSelection(true); setLocationName('@sharedLocation') }
     if (window.matchMedia(MOBILE).matches && !h.position) setSheet('peek')
     setHydrated(true)
   }, [])
-  useEffect(() => { if (hydrated) writeHash({ scenario, band, compare, programs, changes, dliReach, position }) }, [hydrated, scenario, band, compare, programs, changes, dliReach, position])
+  useEffect(() => { if (hydrated) writeHash({ scenario, band, compare, programs, changes, dliReach, lang, position }) }, [hydrated, scenario, band, compare, programs, changes, dliReach, lang, position])
+  // screen readers pronounce the page in the chosen language
+  useEffect(() => { document.documentElement.lang = lang }, [lang])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -306,7 +311,7 @@ function Home() {
   // map label per school, so notes can say what an area-less school keeps ("Rigler K-5 Spanish Immersion")
   const labels = useMemo(() => Object.fromEntries(Object.entries(datasets ?? {}).map(([k, v]) =>
     [k, Object.fromEntries(v.schools.features.map((f) => [schoolKey(String(f.properties?.name ?? '')), String(f.properties?.name ?? '')]))])), [datasets])
-  const notes = spotNotes(scenario, results, areaNames, labels)
+  const notes = spotNotes(scenario, results, areaNames, labels, lang)
 
   // Jump to a school named in the change lists: select its location so the lookup explains it.
   const goToSchool = (name: string) => {
@@ -318,7 +323,7 @@ function Home() {
         const [lng, lat] = f.geometry.coordinates
         setPosition([lat, lng])
         setFocusSelection(true)
-        setLocationName(`${name} (school location)`)
+        setLocationName(`@school:${name}`)
         setSheet((s) => (s === 'peek' ? 'half' : s))
         body.current?.scrollTo({ top: 0, behavior: 'smooth' })
         return
@@ -330,7 +335,7 @@ function Home() {
     e.preventDefault()
     if (!address.trim()) return
     setBusy(true)
-    setSearchMsg('Searching…')
+    setSearchMsg({ key: 'searching' })
     try {
       const url = new URL('https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates')
       url.search = new URLSearchParams({
@@ -346,18 +351,24 @@ function Home() {
       setPosition([y, x])
       setFocusSelection(true)
       setLocationName(hit.address)
-      setSearchMsg(hit.address)
+      setSearchMsg({ text: hit.address })
       setSheet((s) => (s === 'peek' ? 'half' : s))
     } catch {
-      setSearchMsg('No confident match in Portland. Add the ZIP code, or click the map.')
+      setSearchMsg({ key: 'searchNoMatch' })
     } finally {
       setBusy(false)
     }
   }
 
+  const tr = (key: string, vars?: Record<string, unknown>) => t(lang, key, vars)
+  const scenarioNames = Object.fromEntries(scenarios.map((s) => [s, tr(`scenario.${s}`)])) as Record<Scenario, string>
+  const shownLocation = locationName === '@sharedLocation' ? tr('sharedLocation')
+    : locationName.startsWith('@school:') ? tr('schoolLocation', { name: locationName.slice(8) }) : locationName
+  const other: Lang = lang === 'en' ? 'es' : 'en'
+
   return (
     <main>
-      <BoundaryMap datasets={datasets} scenario={scenario} band={band} compare={compare} programs={programs} changes={changes} dli={dli} dliReach={dliReach} position={position}
+      <BoundaryMap datasets={datasets} scenario={scenario} band={band} compare={compare} programs={programs} changes={changes} lang={lang} dli={dli} dliReach={dliReach} position={position}
         focusSelection={focusSelection} panelInset={panelInset} onSelect={select} />
 
       <aside className={dragHeight !== null ? 'panel dragging' : 'panel'} ref={panel} data-sheet={mobile ? sheet : undefined}
@@ -367,128 +378,141 @@ function Home() {
           <div className="sheet-grab" onPointerDown={onGrabDown} onPointerMove={onGrabMove} onPointerUp={onGrabUp}
             onPointerCancel={() => { drag.current = null; setDragHeight(null) }} onClick={onGrabClick}>
             <button className="sheet-handle" type="button" aria-expanded={sheet !== 'peek'}
-              aria-label={sheet === 'peek' ? 'Show map controls' : 'Hide map controls'} />
+              aria-label={tr(sheet === 'peek' ? 'sheetShow' : 'sheetHide')} />
             <header>
-              <h1>PPS attendance boundaries</h1>
-              <p className="sub">Proposed scenarios for school year 2027–28</p>
+              <h1>{tr('title')}</h1>
+              <p className="sub">{tr('subtitle')}</p>
             </header>
           </div>
-          {/* outside the drag zone so the link is tappable on phones */}
-          <p className="contact">
-            Built by Jason Brown. Wrong boundary or a question? Email{' '}
-            <a href="mailto:browniefed@gmail.com?subject=PPS%20School%20Explorer">browniefed@gmail.com</a>
-          </p>
-          <Segmented label="Scenario" value={scenario} keys={scenarios} options={SCENARIO_NAMES} onChange={setScenario} large />
+          {/* outside the drag zone so the links are tappable on phones */}
+          <div className="meta-row">
+            <p className="contact">
+              {tr('contact')}{' '}
+              <a href="mailto:browniefed@gmail.com?subject=PPS%20School%20Explorer">browniefed@gmail.com</a>
+            </p>
+            <button type="button" className="lang-toggle" lang={other} aria-label={t(other, 'langButtonLabel')} onClick={() => setLang(other)}>
+              {LANGS[other]}
+            </button>
+          </div>
+          <Segmented label={tr('scenarioLabel')} value={scenario} keys={scenarios} options={scenarioNames} onChange={setScenario} large />
         </div>
 
         <div className="panel-body" ref={body} inert={mobile && sheet === 'peek' && dragHeight === null}>
-        <Segmented label="Grades" value={band} keys={bands} options={BAND_NAMES} onChange={setBand} />
+        <p className="hint scenario-hint">{tr('scenarioHint')}</p>
+        <details className="howto" open={!position}>
+          <summary>{tr('howToTitle')}</summary>
+          <ol>
+            <li>{tr('howTo1')}</li>
+            <li>{tr('howTo2')}</li>
+            <li>{tr('howTo3')}</li>
+          </ol>
+        </details>
+        <Segmented label={tr('gradesLabel')} value={band} keys={bands} options={BAND_NAMES} onChange={setBand} />
 
         <label className="check">
           <input type="checkbox" checked={compare} disabled={scenario === 'sq'} onChange={(e) => setCompare(e.target.checked)} />
-          <span>Show status quo lines on top (dotted)</span>
+          <span>{tr('compareToggle')}</span>
         </label>
 
         <label className="check">
           <input type="checkbox" checked={changes} disabled={scenario === 'sq'} onChange={(e) => setChanges(e.target.checked)} />
-          <span>Highlight where the school changes, and where closing schools’ students go</span>
+          <span>{tr('changesToggle')}</span>
         </label>
         {changes && scenario !== 'sq' && (
           <div className="program-key">
             <ul>
-              <li className="wide"><span className="hatch-swatch" />Assigned school differs from status quo</li>
-              <li className="wide"><span className="closed-swatch">×</span>School closes; dashed arrows lead to the receiving schools</li>
+              <li className="wide"><span className="hatch-swatch" />{tr('changesKeyHatch')}</li>
+              <li className="wide"><span className="closed-swatch">×</span>{tr('changesKeyClosed')}</li>
             </ul>
           </div>
         )}
 
         <label className="check">
           <input type="checkbox" checked={programs} onChange={(e) => setPrograms(e.target.checked)} />
-          <span>Show immersion programs{scenario !== 'sq' ? ' and where they move' : ''}</span>
+          <span>{tr('programsToggle', { moves: scenario !== 'sq' })}</span>
         </label>
         {programs && (
           <div className="program-key">
             <ul>
               {Object.entries(PROGRAM_COLORS).filter(([k]) => scenario !== 'sq' || !['Deaf and Hard of Hearing', 'Odyssey'].includes(k)).map(([k, color]) => (
-                <li key={k}><span className="ring" style={{ borderColor: color }} />{k === 'Deaf and Hard of Hearing' ? 'Deaf/Hard of Hearing' : k}</li>
+                <li key={k}><span className="ring" style={{ borderColor: color }} />{tr(`lang.${k}`)}</li>
               ))}
-              <li className="wide"><span className="ring dashed" />Immersion only: no neighborhood area</li>
+              <li className="wide"><span className="ring dashed" />{tr('immersionOnly')}</li>
             </ul>
             <p className="hint">
-              Rings mark immersion schools{scenario !== 'sq' ? '; arrows show a program moving to a new school' : ''}. Labels appear when you zoom in.
-              {band === 'k5' && scenario !== 'sq' && ' Rigler, Kelly and César Chávez don’t close. César Chávez’s neighborhood goes to Rosa Parks (board memo). PPS’s maps draw Rigler and Scott, and Kelly and Lent, inside shared boundaries without saying which school serves each area.'}
+              {tr('programsHint', { moves: scenario !== 'sq' })}
+              {band === 'k5' && scenario !== 'sq' && ' ' + tr('programsK5Note')}
             </p>
           </div>
         )}
 
         <label className="check">
           <input type="checkbox" checked={dliReach} onChange={(e) => setDliReach(e.target.checked)} />
-          <span>Spanish immersion: 1-mile reach (elementary)</span>
+          <span>{tr('dliToggle')}</span>
         </label>
-        {dliReach && dli && <DliSummary dli={dli} scenario={scenario} />}
+        {dliReach && dli && <DliSummary dli={dli} scenario={scenario} lang={lang} />}
 
         <form className="search" role="search" onSubmit={search}>
-          <label htmlFor="address" className="control-label">Look up an address</label>
+          <label htmlFor="address" className="control-label">{tr('searchLabel')}</label>
           <div className="search-row">
             <input id="address" type="search" value={address} onChange={(e) => setAddress(e.target.value)}
-              placeholder="e.g. 1234 SE Division St" autoComplete="street-address" maxLength={240} />
-            <button type="submit" disabled={busy}>{busy ? 'Finding…' : 'Find'}</button>
+              placeholder={tr('searchPlaceholder')} autoComplete="street-address" maxLength={240} />
+            <button type="submit" disabled={busy}>{tr(busy ? 'finding' : 'find')}</button>
           </div>
-          <p className="hint" aria-live="polite">{searchMsg}</p>
+          <p className="hint" aria-live="polite">{'key' in searchMsg ? tr(searchMsg.key) : searchMsg.text}</p>
         </form>
 
-        {dataError && <p className="error" role="alert">Boundary data failed to load. Reload the page to try again.</p>}
+        {dataError && <p className="error" role="alert">{tr('dataError')}</p>}
 
         {results && (
           <section className="lookup" aria-live="polite">
-            <h2>Schools at this spot</h2>
-            {locationName && <p className="hint location-name">{locationName}</p>}
+            <h2>{tr('lookupTitle')}</h2>
+            {shownLocation && <p className="hint location-name">{shownLocation}</p>}
             <table>
               <thead><tr><th /><th scope="col">K–5</th><th scope="col">6–8</th><th scope="col">9–12</th></tr></thead>
               <tbody>
                 {scenarios.map((s) => (
                   <tr key={s} className={s === scenario ? 'current' : undefined}>
-                    <th scope="row">{s === 'sq' ? 'Status quo' : SCENARIO_NAMES[s].replace('Scenario ', 'Scen. ')}</th>
-                    {bands.map((b) => <Cell key={b} a={results[s][b]} />)}
+                    <th scope="row">{tr(`scenarioShort.${s}`)}</th>
+                    {bands.map((b) => <Cell key={b} a={results[s][b]} lang={lang} />)}
                   </tr>
                 ))}
               </tbody>
             </table>
-            <p className="hint">Highlighted cells differ from status quo.</p>
-            {anyNear && <p className="hint">* This spot sits on a boundary line, so the nearest area is shown. Check with PPS.</p>}
+            <p className="hint">{tr('lookupChanged')}</p>
+            {anyNear && <p className="hint">{tr('lookupNear')}</p>}
             {scenario === 'sq'
-              ? <p className="hint">Choose Scenario A or B to see what changes for these schools.</p>
+              ? <p className="hint">{tr('lookupChooseScenario')}</p>
               : notes.length > 0 && (
                 <div className="spot-notes">
-                  <h3>What this means in {SCENARIO_NAMES[scenario]}</h3>
+                  <h3>{tr('lookupNotesTitle', { scenario: scenarioNames[scenario] })}</h3>
                   <ul>{notes.map((n) => <li key={n.school + n.text}><strong>{n.school}:</strong> {n.text}</li>)}</ul>
                 </div>
               )}
           </section>
         )}
 
-        <Changes scenario={scenario} onGo={goToSchool} />
+        <Changes scenario={scenario} onGo={goToSchool} lang={lang} />
 
         <section className="timeline">
-          <h2>What happens next</h2>
+          <h2>{tr('timelineTitle')}</h2>
           <ol>
-            <li><strong>Oct 6, 2026:</strong> scenarios presented to the school board</li>
-            <li><strong>October–November:</strong> community feedback on both scenarios</li>
-            <li><strong>Mid-November:</strong> the superintendent recommends one plan</li>
-            <li><strong>December:</strong> the board votes in a public meeting</li>
-            <li><strong>Fall 2027:</strong> changes take effect for the 2027–28 school year</li>
+            {(['timeline1', 'timeline2', 'timeline3', 'timeline4', 'timeline5'] as const).map((k) => {
+              const [when, what] = t(lang, k) as unknown as [string, string]
+              return <li key={k}><strong>{when}</strong> {what}</li>
+            })}
           </ol>
-          <p className="hint">These are proposals, not decisions. Transportation, staffing and transition support are still being planned.</p>
-          <h3>Share feedback with PPS</h3>
+          <p className="hint">{tr('timelineNote')}</p>
+          <h3>{tr('feedbackTitle')}</h3>
           <ul className="sources">
-            <li>Email <a href="mailto:Rightsizing@pps.net">Rightsizing@pps.net</a></li>
-            <li><a href="https://www.pps.net/rightsizing-rsvp" target="_blank" rel="noreferrer">RSVP for a community event</a></li>
-            <li><a href="https://www.pps.net/about/portland-public-schools-information/rightsize/frequently-asked-questions" target="_blank" rel="noreferrer">PPS rightsizing FAQ</a> (has a question form)</li>
+            <li>{tr('feedbackEmail')} <a href="mailto:Rightsizing@pps.net">Rightsizing@pps.net</a></li>
+            <li><a href="https://www.pps.net/rightsizing-rsvp" target="_blank" rel="noreferrer">{tr('feedbackRsvp')}</a></li>
+            <li><a href="https://www.pps.net/about/portland-public-schools-information/rightsize/frequently-asked-questions" target="_blank" rel="noreferrer">{tr('feedbackFaq')}</a> {tr('feedbackFaqNote')}</li>
           </ul>
         </section>
 
         <section className="legend">
-          <h2>High school cluster</h2>
+          <h2>{tr('clusterTitle')}</h2>
           <ul>
             {Object.entries(CLUSTERS).map(([name, color]) => (
               <li key={name}><span className="swatch" style={{ background: color }} />{name}</li>
@@ -497,31 +521,24 @@ function Home() {
         </section>
 
         <footer>
-          <h2>Sources</h2>
+          <h2>{tr('sourcesTitle')}</h2>
           <ul className="sources">
-            <li><a href={PPS_DOCUMENTS} target="_blank" rel="noreferrer">PPS board documents (agenda item 8)</a></li>
+            <li><a href={PPS_DOCUMENTS} target="_blank" rel="noreferrer">{tr('sourceBoard')}</a></li>
             {scenarios.map((s) => (
               <li key={s}>
                 <a href={`/maps/${PDF_SCENARIO[s]}-${PDF_BAND[band]}.pdf`} target="_blank" rel="noreferrer">
-                  {SCENARIO_NAMES[s]} {BAND_NAMES[band]} map (PDF)
+                  {tr('sourceMap', { scenario: scenarioNames[s], band: BAND_NAMES[band] })}
                 </a>
               </li>
             ))}
             <li>
-              <a href="https://ppsdata.info" target="_blank" rel="noreferrer">ppsdata.info</a> by Alex Meub
-              (<a href="https://github.com/meub/pps-data" target="_blank" rel="noreferrer">pps-data</a>), which pointed us to the board
-              packet and the City of Portland boundary data used to check these maps
+              <a href="https://ppsdata.info" target="_blank" rel="noreferrer">ppsdata.info</a> {tr('sourcePpsdataBy')}
+              {' '}(<a href="https://github.com/meub/pps-data" target="_blank" rel="noreferrer">pps-data</a>). {tr('sourcePpsdataRest')}
             </li>
           </ul>
-          <p>
-            Boundaries are traced from the vector paths in PPS’s scenario PDFs (rightsizing model 2026.09.24) and placed using the
-            PDFs’ own embedded map coordinates, so positions are accurate to a few metres. Area names come from the school
-            labels on each map. School changes come from the PPS board memo and regional summaries for October 6, 2026.
-            Status quo areas match the City of Portland’s school boundary data for 98% of the district at K–5 and 9–12.
-            Confirm addresses near a boundary with PPS; lottery and immersion placements are separate.
-          </p>
-          <p>Address searches go straight from your browser to Esri’s geocoder and aren’t saved by this site.</p>
-          <p>This site isn’t affiliated with PPS.</p>
+          <p>{tr('method')}</p>
+          <p>{tr('privacy')}</p>
+          <p>{tr('notAffiliated')}</p>
         </footer>
         </div>
       </aside>

@@ -8,4 +8,4 @@ export function programKind(program: string): string | null
 export function immersionSites(schools: FeatureCollection, areaKeys: Set<string>): ImmersionSite[]
 export function programMoves(scenario: Scenario, layers: { scenarioSchools?: FeatureCollection; sqSchools?: FeatureCollection }): ProgramMove[]
 export const CLOSURE_COLOR: string
-export function closureMoves(scenario: Scenario, layers: { scenarioSchools?: FeatureCollection; sqSchools?: FeatureCollection }): (ProgramMove & { detail?: string })[]
+export function closureMoves(scenario: Scenario, layers: { scenarioSchools?: FeatureCollection; sqSchools?: FeatureCollection }): (ProgramMove & { detail?: string; detail_es?: string })[]

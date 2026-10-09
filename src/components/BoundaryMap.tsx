@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import type * as Leaflet from 'leaflet'
 import type { Feature, FeatureCollection, Polygon, MultiPolygon } from 'geojson'
 import type { Band, Scenario } from '../lib/assignments.mjs'
-import { describe, eventsFor, schoolKey } from '../lib/changes.mjs'
+import { describe, eventsFor, programName, schoolKey } from '../lib/changes.mjs'
+import { mapLabel as labelIn, t, type Lang } from '../lib/i18n.mjs'
 import { closureMoves, immersionSites, PROGRAM_COLORS, programMoves, type ProgramMove } from '../lib/programs.mjs'
 
 // Fill colours taken from the PPS map legend.
@@ -32,6 +33,7 @@ type Props = {
   compare: boolean
   programs: boolean
   changes: boolean
+  lang: Lang
   dli: DliReach | null
   dliReach: boolean
   position: [number, number] | null
@@ -63,16 +65,16 @@ function labelPoint(f: Feature): [number, number] {
 }
 
 // School marker tooltip: the map label plus what the board memo says happens to the school here.
-function schoolTip(name: string, scenario: Scenario) {
+function schoolTip(name: string, scenario: Scenario, lang: Lang) {
   const tip = document.createElement('div')
   const title = document.createElement('strong')
-  title.textContent = name
+  title.textContent = labelIn(lang, name)
   tip.append(title)
   if (scenario === 'sq') return tip
   const key = schoolKey(name)
   for (const e of eventsFor(scenario, name)) {
     const p = document.createElement('p')
-    p.textContent = describe(e, key)
+    p.textContent = describe(e, key, lang)
     tip.append(p)
   }
   return tip
@@ -80,16 +82,16 @@ function schoolTip(name: string, scenario: Scenario) {
 
 // "Lincoln cluster", or for an area split between high schools:
 // "High school: Lincoln (54% of area) or Wells-Barnett (46%), by address"
-function highSchoolText(p: Record<string, any>) {
+function highSchoolText(p: Record<string, any>, lang: Lang) {
   const split: { name: string; share: number }[] = p.clusters ?? []
-  if (p.level === '9-12' || split.length < 2) return `${p.cluster} cluster`
-  const parts = split.map((c, i) => `${c.name} (${Math.round(c.share * 100)}%${i === 0 ? ' of area' : ''})`)
-  return `High school: ${parts.slice(0, -1).join(', ')} or ${parts.at(-1)}, by address`
+  if (p.level === '9-12' || split.length < 2) return t(lang, 'mapCluster', { name: p.cluster })
+  const parts = split.map((c, i) => `${c.name} (${Math.round(c.share * 100)}%${i === 0 ? ' ' + t(lang, 'mapOfArea') : ''})`)
+  return t(lang, 'mapSplit', { parts: parts.slice(0, -1).join(', '), last: parts.at(-1) })
 }
 
 // Curved arrow from one school to another, built in screen space so the curve and the arrowhead keep
 // a constant on-screen size; rebuilt on zoom. Returns null when the two schools are too close to draw.
-function arrowLayers(lf: typeof Leaflet, m: Leaflet.Map, move: ProgramMove & { detail?: string }): Leaflet.Layer[] | null {
+function arrowLayers(lf: typeof Leaflet, m: Leaflet.Map, move: ProgramMove & { detail?: string; detail_es?: string }, lang: Lang): Leaflet.Layer[] | null {
   const a = m.latLngToLayerPoint([move.from[1], move.from[0]]), b = m.latLngToLayerPoint([move.to[1], move.to[0]])
   const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy)
   if (len < 24) return null
@@ -105,8 +107,8 @@ function arrowLayers(lf: typeof Leaflet, m: Leaflet.Map, move: ProgramMove & { d
   const ll = (p: { x: number; y: number }) => m.layerPointToLatLng(lf.point(p.x, p.y))
   const line = pts.map(ll)
   const tipText = move.kind === 'closure'
-    ? `${move.fromName} closes → students go to ${move.toName}${move.detail ? '. ' + move.detail : ''}`
-    : `${move.program}: ${move.fromName} → ${move.toName}`
+    ? t(lang, 'arrowClosure', { from: move.fromName, to: move.toName, detail: (lang === 'es' && move.detail_es) || move.detail })
+    : t(lang, 'arrowProgram', { program: programName(move.program, lang), from: move.fromName, to: move.toName })
   return [
     lf.polyline(line, { pane: 'arrows', color: '#ffffff', weight: 7, opacity: 0.9, interactive: false }),
     lf.polyline(line, { pane: 'arrows', color: move.color, weight: 3.5, opacity: 0.95, dashArray: move.kind === 'closure' ? '7 5' : undefined })
@@ -118,7 +120,7 @@ function arrowLayers(lf: typeof Leaflet, m: Leaflet.Map, move: ProgramMove & { d
 
 const mapLabel = (name: string) => name.replace(/ Elementary$/, '')
 
-export function BoundaryMap({ datasets, scenario, band, compare, programs, changes, dli, dliReach, position, focusSelection, panelInset, onSelect }: Props) {
+export function BoundaryMap({ datasets, scenario, band, compare, programs, changes, lang, dli, dliReach, position, focusSelection, panelInset, onSelect }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const L = useRef<typeof Leaflet | null>(null)
   const map = useRef<Leaflet.Map | null>(null)
@@ -195,7 +197,7 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, chang
         const tip = document.createElement('span')
         const strong = document.createElement('strong')
         strong.textContent = p.name
-        tip.append(strong, document.createElement('br'), `${highSchoolText(p)} · ${p.area_sqmi} sq mi`)
+        tip.append(strong, document.createElement('br'), `${highSchoolText(p, lang)} · ${t(lang, 'mapSqMi', { n: p.area_sqmi })}`)
         layer.bindTooltip(tip, { sticky: true, className: 'hover-tip' })
         layer.on('mouseover', () => (layer as Leaflet.Path).setStyle(hs ? { fillOpacity: 0.42, weight: 4 } : { fillOpacity: 0.12, weight: 2.5 }))
         layer.on('mouseout', () => areas.resetStyle(layer))
@@ -218,7 +220,7 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, chang
           return lf.marker(ll, {
             pane: 'schools', keyboard: false,
             icon: lf.divIcon({ className: 'closed-icon', html: '×', iconSize: [20, 20], iconAnchor: [10, 10] }),
-          }).bindTooltip(schoolTip(String(f.properties?.name ?? ''), scenario), { className: 'hover-tip school-tip' })
+          }).bindTooltip(schoolTip(String(f.properties?.name ?? ''), scenario, lang), { className: 'hover-tip school-tip' })
         }
         return lf.circleMarker(ll, {
           pane: 'schools',
@@ -227,7 +229,7 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, chang
           weight: 1.5,
           fillColor: kind === 'focus' ? '#6b1f3d' : '#ffffff',
           fillOpacity: 1,
-        }).bindTooltip(schoolTip(String(f.properties?.name ?? ''), scenario), { className: 'hover-tip school-tip' })
+        }).bindTooltip(schoolTip(String(f.properties?.name ?? ''), scenario, lang), { className: 'hover-tip school-tip' })
       },
     }).addTo(m))
 
@@ -262,7 +264,7 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, chang
       if (labels.current) m.removeLayer(labels.current)
       labels.current = null
     }
-  }, [ready, datasets, scenario, band, compare])
+  }, [ready, datasets, scenario, band, compare, lang])
 
   // Spanish DLI elementary sites: a 1-mile circle around each site in the shown scenario, and dashed
   // grey circles for sites that had Spanish immersion in 2022 but not here.
@@ -306,7 +308,7 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, chang
     added.push(arrows)
     const draw = () => {
       arrows.clearLayers()
-      for (const mv of moves) for (const l of arrowLayers(lf, m, mv) ?? []) arrows.addLayer(l)
+      for (const mv of moves) for (const l of arrowLayers(lf, m, mv, lang) ?? []) arrows.addLayer(l)
     }
     draw()
     m.on('zoomend', draw)
@@ -314,7 +316,7 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, chang
       m.off('zoomend', draw)
       for (const l of added) m.removeLayer(l)
     }
-  }, [ready, datasets, scenario, band, changes])
+  }, [ready, datasets, scenario, band, changes, lang])
 
   // Immersion overlay: language rings around immersion schools, labels, and arrows for program moves.
   useEffect(() => {
@@ -333,7 +335,7 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, chang
         dashArray: site.ownArea ? undefined : '4 3',
       })))
       const tip = document.createElement('span')
-      tip.textContent = `${site.short} · ${site.languages.join(' & ')}`
+      tip.textContent = `${site.short} · ${site.languages.map((l) => t(lang, `lang.${l}`)).join(' & ')}`
       tip.style.color = PROGRAM_COLORS[site.languages[0]] ?? '#495057'
       siteLabels.addLayer(lf.tooltip({ permanent: true, direction: 'right', offset: [12, 0], className: 'site-label', pane: 'labels', interactive: false })
         .setLatLng(ll).setContent(tip))
@@ -343,7 +345,7 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, chang
     const arrows = lf.layerGroup().addTo(m)
     const draw = () => {
       arrows.clearLayers()
-      for (const mv of moves) for (const l of arrowLayers(lf, m, mv) ?? []) arrows.addLayer(l)
+      for (const mv of moves) for (const l of arrowLayers(lf, m, mv, lang) ?? []) arrows.addLayer(l)
       const on = m.getZoom() >= 12
       if (on && !m.hasLayer(siteLabels)) siteLabels.addTo(m)
       if (!on && m.hasLayer(siteLabels)) m.removeLayer(siteLabels)
@@ -354,7 +356,7 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, chang
       m.off('zoomend', draw)
       for (const l of [rings, arrows, siteLabels]) m.removeLayer(l)
     }
-  }, [ready, datasets, scenario, band, programs])
+  }, [ready, datasets, scenario, band, programs, lang])
 
   // Selected point: pin it, and move the map to it when it came from an address search or a shared link.
   useEffect(() => {
@@ -380,7 +382,7 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, chang
           </pattern>
         </defs>
       </svg>
-      <div ref={container} className="map" aria-label="Map of attendance boundaries. Click to compare schools at a location." />
+      <div ref={container} className="map" aria-label={t(lang, 'mapLabel')} />
       {error && <p className="map-error" role="alert">{error}</p>}
     </div>
   )

@@ -212,3 +212,18 @@ button.link {
 .dli-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .dli-table th, .dli-table td { text-align: left; padding: 4px; border-top: 1px solid var(--line); }
 .dli-table thead th { color: var(--ink-soft); font-weight: 500; border-top: 0; }
+
+/* language switch, how-to */
+.meta-row { display: flex; align-items: flex-start; gap: 10px; margin-top: -8px; }
+.meta-row .contact { margin: 0; flex: 1; }
+.lang-toggle {
+  flex: none; font: inherit; font-size: 14px; font-weight: 700; color: var(--pps);
+  background: var(--paper); border: 1.5px solid var(--pps); border-radius: 999px;
+  padding: 4px 12px; min-height: 32px; cursor: pointer;
+}
+.lang-toggle:hover { background: var(--pps-tint); }
+.scenario-hint { margin-top: -4px; }
+.howto { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+.howto summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+.howto summary:focus-visible { outline: 3px solid var(--pps); outline-offset: 2px; }
+.howto ol { margin: 8px 0 2px; padding-left: 20px; font-size: 14px; display: flex; flex-direction: column; gap: 4px; }

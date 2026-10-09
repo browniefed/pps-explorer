@@ -49,7 +49,7 @@ test('Rigler stays open: its notes explain the Scott program move and the missin
   assert.equal(results.a.k5.school, 'Scott Elementary')
   const notes = spotNotes('a', results, areaNames).map((n) => n.text)
   assert(notes.some((t) => t === 'Spanish immersion moves here from Scott.'), notes.join('\n'))
-  assert(notes.some((t) => t.startsWith('Rigler is not closing. On PPS’s Scenario A map, Rigler and Scott sit inside one boundary')), notes.join('\n'))
+  assert(notes.some((t) => t.startsWith('Rigler is not closing. On PPS’s Scenario A map, Rigler and Scott are inside one boundary.')), notes.join('\n'))
   assert.equal(results.a.k5.status, 'unclear')
   assert.deepEqual(results.a.k5.alternatives, ['Rigler Elementary'])
   // a spot in Scott's own current area is not unclear
@@ -60,5 +60,20 @@ test('Rigler stays open: its notes explain the Scott program move and the missin
 test('scenario differences: Lewis closes only in A, and B explains that it stays open', () => {
   assert(closes('a', 'Lewis') && !closes('b', 'Lewis'))
   assert.match(eventsFor('b', 'Lewis').map((e) => describe(e)).join(' '), /Lewis stays open/)
-  assert.equal(describe(eventsFor('a', 'Vernon')[0], schoolKey('Vernon')), 'Vernon becomes K–5; its grades 6–8 move to Harriet Tubman.')
+  assert.equal(describe(eventsFor('a', 'Vernon')[0], schoolKey('Vernon')), 'Vernon becomes K–5. Its grades 6–8 move to Harriet Tubman.')
+})
+
+test('notes and change descriptions read naturally in Spanish', () => {
+  const rigler = schoolLayers.sq_k5.features.find((f) => f.properties.name.startsWith('Rigler')).geometry.coordinates
+  const notes = spotNotes('a', assignmentsAt(areaLayers, rigler), areaNames, {}, 'es').map((n) => n.text)
+  assert(notes.includes('El programa de inmersión en español se muda aquí desde Scott.'), notes.join('\n'))
+  assert(notes.some((t) => t.startsWith('Rigler no cierra. En el mapa del Escenario A de PPS, Rigler y Scott están dentro de un mismo límite.')), notes.join('\n'))
+  assert.equal(describe(eventsFor('a', 'Vernon')[0], schoolKey('Vernon'), 'es'), 'Vernon pasa a ser K–5. Su 6.º a 8.º grado se muda a Harriet Tubman.')
+  const maplewood = CHANGES.a.find((e) => e.school === 'Maplewood')
+  assert.equal(describe(maplewood, undefined, 'es'), 'Maplewood cierra. Sus estudiantes van a Hayhurst y Rieke. Cerca del 70% de su zona pasa a Hayhurst y el 30% a Rieke.')
+  // every memo-derived sentence has a Spanish version
+  for (const e of [...CHANGES.a, ...CHANGES.b]) {
+    if (e.detail) assert(e.detail_es, `missing detail_es: ${e.detail}`)
+    if (e.text) assert(e.text_es, `missing text_es: ${e.text}`)
+  }
 })

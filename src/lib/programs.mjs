@@ -75,7 +75,7 @@ export function closureMoves(scenario, { scenarioSchools, sqSchools }) {
     if (!at) continue
     for (const to of e.to) {
       const end = point(scenarioSchools, schoolKey(to)) ?? point(sqSchools, schoolKey(to))
-      if (end) moves.push({ program: `${e.school} closes`, kind: 'closure', color: CLOSURE_COLOR, fromName: e.school, toName: to, from: at, to: end, detail: e.detail })
+      if (end) moves.push({ program: `${e.school} closes`, kind: 'closure', color: CLOSURE_COLOR, fromName: e.school, toName: to, from: at, to: end, detail: e.detail, detail_es: e.detail_es })
     }
   }
   return moves

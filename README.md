@@ -30,6 +30,17 @@ npm run typecheck
 
 The Vite build generates `src/routeTree.gen.ts` before type checking. Data and lookup tests run without npm dependencies.
 
+## Languages and plain language
+
+The app is in English and Spanish. The "Español" / "English" button switches languages; the choice is kept in the link (`lang=es`), and Spanish-language browsers start in Spanish.
+
+- `src/lib/strings.mjs` holds every interface string in both languages. The comment at the top is the style guide: about a 6th grade reading level, the most important point first, sentences of 20 words or fewer, active voice, and terms explained the first time they appear. For Spanish: formal *usted*, neutral U.S. Spanish, dates like "6 de octubre de 2026", and a fixed glossary (*zona de asistencia*, *sin cambios*, *inmersión en dos idiomas*, *escuela preparatoria (high school)*, …). School and street names stay in English.
+- Board-memo text in `src/lib/changes-data.mjs` has a Spanish version next to each English sentence (`detail_es`, `text_es`).
+- `src/lib/i18n.mjs` has `t()`, which falls back to English for a missing string, plus a helper that translates the descriptive part of PPS's map labels ("Scott K-5 Neighborhood" becomes "Scott (K-5, del vecindario)").
+- `tests/i18n.test.mjs` fails if an English string has no Spanish version, or if the Spanish uses informal forms (*tú*, *tienes*, …).
+
+To add a language, add a block to `STRINGS` in `strings.mjs` and an entry to `LANGS` in `i18n.mjs`. Have a native speaker review it before it goes live.
+
 ## Data
 
 ```sh

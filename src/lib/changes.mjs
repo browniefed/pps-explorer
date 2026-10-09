@@ -1,5 +1,7 @@
 import { CHANGES } from './changes-data.mjs'
 import { bands } from './assignments.mjs'
+import { list as join, t } from './i18n.mjs'
+import { LANGUAGE_NAMES_ES, PROGRAM_NAMES_ES } from './strings.mjs'
 
 // School names differ across sources ("MLK Jr" on maps, "Dr. Martin Luther King Jr." in the memo,
 // "Gray" vs "Robert Gray", "Sunnyside" vs "Sunnyside Environmental"); compare on a normalised key.
@@ -24,27 +26,32 @@ const involves = (e, key) =>
   (e.from && e.from.some((s) => schoolKey(s) === key)) ||
   (e.schools && e.schools.some((s) => schoolKey(s) === key))
 
-const list = (names) => names.length < 3 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+// Translated fields of an event: detail_es / text_es, program names from strings.mjs.
+const field = (e, name, lang) => (lang === 'es' && e[`${name}_es`]) || e[name]
+export const programName = (program, lang) => (lang === 'es' && PROGRAM_NAMES_ES[program]) || program
 
 // One plain sentence describing an event, from the point of view of `key` when given.
-export function describe(e, key) {
+export function describe(e, key, lang = 'en') {
   const is = (s) => key && schoolKey(s) === key
+  const detail = field(e, 'detail', lang)
   switch (e.kind) {
     case 'close':
-      if (key && !is(e.school)) return `Receives students from ${e.school}, which closes.${e.detail ? ' ' + e.detail : ''}`
-      return `${e.school} closes${e.to ? `; students go to ${list(e.to)}` : ''}.${e.detail ? ' ' + e.detail : ''}`
-    case 'program':
-      if (key && is(e.to)) return `${e.program} moves here from ${list(e.from)}.${e.detail ? ' ' + e.detail : ''}`
+      if (key && !is(e.school)) return t(lang, 'closeReceives', { school: e.school, detail })
+      return t(lang, 'closeSelf', { school: e.school, to: e.to && join(lang, e.to), detail })
+    case 'program': {
+      const program = programName(e.program, lang)
+      if (key && is(e.to)) return t(lang, 'programHere', { program, from: join(lang, e.from), detail })
       if (key && e.from.some(is)) {
         const others = e.from.filter((s) => !is(s))
-        return `Its ${e.program} moves to ${e.to}${others.length ? `, along with ${list(others)}’s` : ''}.${e.detail ? ' ' + e.detail : ''}`
+        return t(lang, 'programIts', { program, to: e.to, others: others.length ? join(lang, others) : '', detail })
       }
-      return `${e.program} moves from ${list(e.from)} to ${e.to}.${e.detail ? ' ' + e.detail : ''}`
+      return t(lang, 'programMove', { program, from: join(lang, e.from), to: e.to, detail })
+    }
     case 'grades':
-      if (key && is(e.to)) return `Receives grades 6–8 from ${e.school}, which becomes K–5.`
-      return `${e.school} becomes K–5; its grades 6–8 move to ${e.to}.`
+      if (key && is(e.to)) return t(lang, 'gradesReceives', { school: e.school })
+      return t(lang, 'gradesSelf', { school: e.school, to: e.to })
     default:
-      return e.text
+      return field(e, 'text', lang)
   }
 }
 
@@ -63,7 +70,7 @@ export function closes(scenario, name) {
 // that have an attendance area on that map (to spot schools that stay open without one, like Rigler).
 // `labels` optionally maps "<scenario>_<band>" to { schoolKey: map label }, to name the program such a
 // school keeps ("Rigler K-5 Spanish Immersion").
-export function spotNotes(scenario, results, areaNames, labels = {}) {
+export function spotNotes(scenario, results, areaNames, labels = {}, lang = 'en') {
   if (scenario === 'sq' || !results) return []
   const notes = [], seen = new Set()
   const add = (school, text) => {
@@ -77,24 +84,25 @@ export function spotNotes(scenario, results, areaNames, labels = {}) {
     // (e.g. Rigler, which becomes an immersion site inside Scott's area). Most important, so it goes first.
     if (before && after && before !== after) {
       const key = schoolKey(before)
-      const S = scenario.toUpperCase()
+      const scenarioName = t(lang, `scenario.${scenario}`)
       if (results[scenario][b].status === 'unclear') {
         // one outline on the scenario map holds both schools, and PPS doesn't say which serves this area
-        add(short(before), `${short(before)} is not closing. On PPS’s Scenario ${S} map, ${short(before)} and ${short(after)} sit inside one boundary with no line between them, and PPS’s documents don’t say which school would serve ${short(before)}’s current area. Check with PPS (Rightsizing@pps.net).`)
+        add(short(before), t(lang, 'noteUnclear', { before: short(before), after: short(after), scenario: scenarioName }))
       } else {
         const explained = eventsFor(scenario, before).some((e) => e.kind === 'close' || (e.kind === 'grades' && schoolKey(e.school) === key))
         if (!explained && !areaNames[`${scenario}_${b}`]?.has(key)) {
           const label = labels[`${scenario}_${b}`]?.[key] ?? ''
           const langs = [...label.matchAll(/(Spanish|Mandarin|Vietnamese|Japanese|Russian) Immersion/g)].map((m) => m[1])
-          const as = langs.length ? ` as a ${langs.join(' and ')} immersion school` : ''
-          add(short(before), `${short(before)} is not closing. It stays open${as}, but on the Scenario ${S} map it has no neighborhood boundary of its own, so this spot is assigned to ${short(after)}.`)
+          const names = langs.map((l) => (lang === 'es' ? LANGUAGE_NAMES_ES[l] ?? l : l))
+          const as = names.length ? t(lang, 'noteNoAreaAs', { langs: join(lang, names) }) : ''
+          add(short(before), t(lang, 'noteNoArea', { before: short(before), after: short(after), scenario: scenarioName, as }))
         }
       }
     }
     // today's school first, then the school this spot is assigned to under the scenario
     for (const name of [before, after]) {
       if (!name) continue
-      for (const e of eventsFor(scenario, name)) add(short(name), describe(e, schoolKey(name)))
+      for (const e of eventsFor(scenario, name)) add(short(name), describe(e, schoolKey(name), lang))
     }
   }
   return notes
