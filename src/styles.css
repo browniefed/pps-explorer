@@ -205,3 +205,10 @@ button.link {
 /* what happens next */
 .timeline ol { margin: 0 0 6px; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
 .timeline h3 { font-size: 14px; font-weight: 700; margin: 10px 0 4px; }
+
+/* Spanish immersion 1-mile reach */
+.ring.dli-ring { border-color: #d9480f; background: rgba(217, 72, 15, .12); }
+.ring.dli-lost { border: 2px dashed #6c757d; }
+.dli-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dli-table th, .dli-table td { text-align: left; padding: 4px; border-top: 1px solid var(--line); }
+.dli-table thead th { color: var(--ink-soft); font-weight: 500; border-top: 0; }

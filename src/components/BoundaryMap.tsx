@@ -19,6 +19,12 @@ export const CLUSTERS: Record<string, string> = {
 
 export type Layer = { areas: FeatureCollection; schools: FeatureCollection; changed?: FeatureCollection }
 
+// Spanish DLI elementary sites per period and their 1-mile reach (scripts/pipeline/dli.py)
+export type DliPeriod = { sites: { name: string; coords: [number, number]; note?: string | null }[]; reach_sq_mi: number; reach_share: number }
+export type DliReach = { radius_miles: number; land_sq_mi: number; periods: Record<'2022' | 'sq' | 'a' | 'b', DliPeriod> }
+const MILE_M = 1609.344
+const DLI_COLOR = '#d9480f'
+
 type Props = {
   datasets: Record<string, Layer> | null
   scenario: Scenario
@@ -26,6 +32,8 @@ type Props = {
   compare: boolean
   programs: boolean
   changes: boolean
+  dli: DliReach | null
+  dliReach: boolean
   position: [number, number] | null
   focusSelection: boolean
   // pixels of map hidden under the panel, so fitting and panning keep content visible
@@ -110,7 +118,7 @@ function arrowLayers(lf: typeof Leaflet, m: Leaflet.Map, move: ProgramMove & { d
 
 const mapLabel = (name: string) => name.replace(/ Elementary$/, '')
 
-export function BoundaryMap({ datasets, scenario, band, compare, programs, changes, position, focusSelection, panelInset, onSelect }: Props) {
+export function BoundaryMap({ datasets, scenario, band, compare, programs, changes, dli, dliReach, position, focusSelection, panelInset, onSelect }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const L = useRef<typeof Leaflet | null>(null)
   const map = useRef<Leaflet.Map | null>(null)
@@ -136,7 +144,7 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, chang
         maxNativeZoom: 16,
         attribution: 'Basemap © Esri, HERE, Garmin, © OpenStreetMap contributors · Boundaries traced from PPS scenario maps',
       }).on('tileerror', () => setError('Basemap tiles could not load. Boundaries remain available.')).addTo(m)
-      for (const [name, z] of [['shading', 390], ['changed', 395], ['areas', 400], ['compare', 450], ['arrows', 580], ['sites', 590], ['schools', 600], ['reference', 620], ['labels', 650]] as const) {
+      for (const [name, z] of [['shading', 390], ['changed', 395], ['areas', 400], ['dli', 440], ['compare', 450], ['arrows', 580], ['sites', 590], ['schools', 600], ['reference', 620], ['labels', 650]] as const) {
         m.createPane(name).style.zIndex = String(z)
       }
       m.getPane('reference')!.style.pointerEvents = 'none'
@@ -144,6 +152,7 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, chang
       // tooltip pane (650 by default, the same z as 'labels', and later in the DOM) and let the
       // pointer pass through them to the shapes underneath
       m.getPane('labels')!.style.pointerEvents = 'none'
+      m.getPane('dli')!.style.pointerEvents = 'none'
       m.getPane('tooltipPane')!.style.zIndex = '700'
       // street names drawn above the coloured areas so they stay readable
       lf.tileLayer(ESRI + 'World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { pane: 'reference', maxZoom: 18, maxNativeZoom: 16 }).addTo(m)
@@ -254,6 +263,29 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, chang
       labels.current = null
     }
   }, [ready, datasets, scenario, band, compare])
+
+  // Spanish DLI elementary sites: a 1-mile circle around each site in the shown scenario, and dashed
+  // grey circles for sites that had Spanish immersion in 2022 but not here.
+  useEffect(() => {
+    const lf = L.current, m = map.current
+    if (!ready || !lf || !m || !dli || !dliReach) return
+    const now = dli.periods[scenario]
+    const current = new Set(now.sites.map((x) => x.name))
+    const group = lf.layerGroup()
+    for (const site of dli.periods['2022'].sites) {
+      if (current.has(site.name)) continue
+      group.addLayer(lf.circle([site.coords[1], site.coords[0]], {
+        pane: 'dli', interactive: false, radius: MILE_M, color: '#6c757d', weight: 2, dashArray: '6 6', fill: false,
+      }))
+    }
+    for (const site of now.sites) {
+      group.addLayer(lf.circle([site.coords[1], site.coords[0]], {
+        pane: 'dli', interactive: false, radius: MILE_M, color: DLI_COLOR, weight: 2.5, fillColor: DLI_COLOR, fillOpacity: 0.08,
+      }))
+    }
+    group.addTo(m)
+    return () => { m.removeLayer(group) }
+  }, [ready, dli, dliReach, scenario])
 
   // Where the assigned school changes from status quo (hatched), and closure arrows to receiving schools.
   useEffect(() => {

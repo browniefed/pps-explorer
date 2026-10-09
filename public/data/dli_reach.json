@@ -1,0 +1,246 @@
+{
+ "radius_miles": 1,
+ "land_sq_mi": 135.9,
+ "periods": {
+  "2022": {
+   "sites": [
+    {
+     "name": "Ainsworth",
+     "coords": [
+      -122.699467,
+      45.509843
+     ],
+     "note": null
+    },
+    {
+     "name": "Atkinson",
+     "coords": [
+      -122.604573,
+      45.505022
+     ],
+     "note": null
+    },
+    {
+     "name": "Beach",
+     "coords": [
+      -122.685219,
+      45.558084
+     ],
+     "note": null
+    },
+    {
+     "name": "Bridger Creative Science",
+     "coords": [
+      -122.582098,
+      45.510621
+     ],
+     "note": "Spanish immersion moved to Lent in fall 2023"
+    },
+    {
+     "name": "C\u00e9sar Ch\u00e1vez",
+     "coords": [
+      -122.719196,
+      45.584465
+     ],
+     "note": null
+    },
+    {
+     "name": "James John",
+     "coords": [
+      -122.751687,
+      45.59038
+     ],
+     "note": null
+    },
+    {
+     "name": "Lent",
+     "coords": [
+      -122.564179,
+      45.485333
+     ],
+     "note": null
+    },
+    {
+     "name": "Rigler",
+     "coords": [
+      -122.60759,
+      45.556047
+     ],
+     "note": null
+    },
+    {
+     "name": "Scott",
+     "coords": [
+      -122.594008,
+      45.555123
+     ],
+     "note": null
+    },
+    {
+     "name": "Sitton",
+     "coords": [
+      -122.758136,
+      45.59994
+     ],
+     "note": null
+    }
+   ],
+   "reach_sq_mi": 24.3,
+   "reach_share": 0.179
+  },
+  "sq": {
+   "sites": [
+    {
+     "name": "Ainsworth",
+     "coords": [
+      -122.699467,
+      45.509843
+     ],
+     "note": null
+    },
+    {
+     "name": "Atkinson",
+     "coords": [
+      -122.604573,
+      45.505022
+     ],
+     "note": null
+    },
+    {
+     "name": "Beach",
+     "coords": [
+      -122.685219,
+      45.558084
+     ],
+     "note": null
+    },
+    {
+     "name": "C\u00e9sar Ch\u00e1vez",
+     "coords": [
+      -122.719196,
+      45.584465
+     ],
+     "note": null
+    },
+    {
+     "name": "James John",
+     "coords": [
+      -122.751687,
+      45.59038
+     ],
+     "note": null
+    },
+    {
+     "name": "Lent",
+     "coords": [
+      -122.564179,
+      45.485333
+     ],
+     "note": null
+    },
+    {
+     "name": "Rigler",
+     "coords": [
+      -122.60759,
+      45.556047
+     ],
+     "note": null
+    },
+    {
+     "name": "Scott",
+     "coords": [
+      -122.594008,
+      45.555123
+     ],
+     "note": null
+    },
+    {
+     "name": "Sitton",
+     "coords": [
+      -122.758136,
+      45.59994
+     ],
+     "note": null
+    }
+   ],
+   "reach_sq_mi": 22.3,
+   "reach_share": 0.164
+  },
+  "a": {
+   "sites": [
+    {
+     "name": "Ainsworth",
+     "coords": [
+      -122.699467,
+      45.509843
+     ],
+     "note": null
+    },
+    {
+     "name": "C\u00e9sar Ch\u00e1vez",
+     "coords": [
+      -122.719196,
+      45.584465
+     ],
+     "note": null
+    },
+    {
+     "name": "Lent",
+     "coords": [
+      -122.564179,
+      45.485333
+     ],
+     "note": null
+    },
+    {
+     "name": "Rigler",
+     "coords": [
+      -122.60759,
+      45.556047
+     ],
+     "note": null
+    }
+   ],
+   "reach_sq_mi": 11.6,
+   "reach_share": 0.085
+  },
+  "b": {
+   "sites": [
+    {
+     "name": "Ainsworth",
+     "coords": [
+      -122.699467,
+      45.509843
+     ],
+     "note": null
+    },
+    {
+     "name": "C\u00e9sar Ch\u00e1vez",
+     "coords": [
+      -122.719196,
+      45.584465
+     ],
+     "note": null
+    },
+    {
+     "name": "Lent",
+     "coords": [
+      -122.564179,
+      45.485333
+     ],
+     "note": null
+    },
+    {
+     "name": "Rigler",
+     "coords": [
+      -122.60759,
+      45.556047
+     ],
+     "note": null
+    }
+   ],
+   "reach_sq_mi": 11.6,
+   "reach_share": 0.085
+  }
+ }
+}

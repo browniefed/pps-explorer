@@ -53,6 +53,10 @@ Address searches go directly from the browser to Esri's geocoder and are not sav
 
 `tests/changes.test.mjs` checks the transcription against the maps: every school it names appears on a map, and the closures match the "School Closed" labels exactly (14 in A, 11 in B).
 
+### Spanish immersion: 1-mile reach
+
+`scripts/pipeline/dli.py` writes `public/data/dli_reach.json`: the elementary schools labelled "Spanish Immersion" on each K-5 map (status quo matches PPS's *Enrollment Details for Language Immersion Schools, October 2025*), plus Bridger for 2022 (its Spanish immersion moved to Lent in fall 2023). It also writes the share of PPS land within one straight-line mile of a site: 18% in 2022 (10 schools), 16% today (9 schools) and 9% in Scenarios A and B (4 schools: César Chávez, Rigler, Lent, Ainsworth). Oregon law (ORS 327.043) requires transport for elementary students who live more than a mile from school; the law measures along a route, so the circles overstate the walkable area. They show geography only, because PPS doesn't publish where immersion students live. The map shows this behind the "Spanish immersion: 1-mile reach" setting.
+
 ### Checking against the City of Portland's boundary data
 
 `scripts/pipeline/verify_city.py` compares our status quo areas with the City of Portland's `School_Boundaries` layer (snapshot in `scripts/pipeline/reference/`, last edited Nov 2025). Both datasets name the same school for 98.2% of the district at K–5, 94.1% at 6–8 and 98.2% at 9–12. The known differences are:

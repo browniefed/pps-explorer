@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type PointerEvent } from 'react'
 import type { FeatureCollection } from 'geojson'
-import { BoundaryMap, CLUSTERS, type Layer } from '../components/BoundaryMap'
+import { BoundaryMap, CLUSTERS, type DliReach, type Layer } from '../components/BoundaryMap'
 import { assignmentsAt, bands, scenarios, shortName, type Assignment, type Band, type Scenario } from '../lib/assignments.mjs'
 import { describe, digest, schoolKey, spotNotes, type ChangeEvent } from '../lib/changes.mjs'
 import { SUMMARY } from '../lib/changes-data.mjs'
@@ -21,11 +21,11 @@ const MOBILE = '(max-width: 720px)'
 type Sheet = 'peek' | 'half' | 'full'
 const sheetHeights = (peek: number, vh: number): Record<Sheet, number> => ({ peek, half: Math.round(vh * 0.5), full: Math.round(vh * 0.88) })
 
-type HashState = { scenario: Scenario; band: Band; compare: boolean; programs: boolean; changes: boolean; position: [number, number] | null }
+type HashState = { scenario: Scenario; band: Band; compare: boolean; programs: boolean; changes: boolean; dliReach: boolean; position: [number, number] | null }
 
 function readHash(): Partial<HashState> {
   const h = new URLSearchParams(window.location.hash.slice(1))
-  const out: Partial<HashState> = { compare: h.get('cmp') === '1', programs: h.get('imm') !== '0', changes: h.get('chg') !== '0' }
+  const out: Partial<HashState> = { compare: h.get('cmp') === '1', programs: h.get('imm') !== '0', changes: h.get('chg') !== '0', dliReach: h.get('dli') === '1' }
   const s = h.get('s'), g = h.get('g')
   if (s && s in SCENARIO_NAMES) out.scenario = s as Scenario
   if (g && g in BAND_NAMES) out.band = g as Band
@@ -34,11 +34,12 @@ function readHash(): Partial<HashState> {
   return out
 }
 
-function writeHash({ scenario, band, compare, programs, changes, position }: HashState) {
+function writeHash({ scenario, band, compare, programs, changes, dliReach, position }: HashState) {
   const parts = [`s=${scenario}`, `g=${band}`]
   if (compare) parts.push('cmp=1')
   if (!programs) parts.push('imm=0')
   if (!changes) parts.push('chg=0')
+  if (dliReach) parts.push('dli=1')
   if (position) parts.push(`pt=${position[0].toFixed(5)},${position[1].toFixed(5)}`)
   window.history.replaceState(null, '', '#' + parts.join('&'))
 }
@@ -140,12 +141,44 @@ function Changes({ scenario, onGo }: { scenario: Scenario; onGo: (name: string) 
   )
 }
 
+// Share of PPS land within 1 mile (straight line) of a Spanish DLI elementary school, 2022 to the scenario shown.
+function DliSummary({ dli, scenario }: { dli: DliReach; scenario: Scenario }) {
+  const rows: [string, '2022' | Scenario][] = [['2022', '2022'], ['Today (2025–26)', 'sq']]
+  if (scenario !== 'sq') rows.push([SCENARIO_NAMES[scenario], scenario])
+  const now = new Set(dli.periods[scenario].sites.map((x) => x.name))
+  const lost = dli.periods['2022'].sites.filter((x) => !now.has(x.name)).map((x) => x.name.replace(' Creative Science', ''))
+  return (
+    <div className="program-key dli-key">
+      <ul>
+        <li className="wide"><span className="ring dli-ring" />Within 1 mile of a Spanish immersion elementary school {scenario === 'sq' ? 'today' : `in ${SCENARIO_NAMES[scenario]}`}</li>
+        <li className="wide"><span className="ring dli-lost" />Had Spanish immersion in 2022, not {scenario === 'sq' ? 'today' : `in ${SCENARIO_NAMES[scenario]}`}: {lost.join(', ')}</li>
+      </ul>
+      <table className="dli-table">
+        <thead><tr><th scope="col">Period</th><th scope="col">Schools</th><th scope="col">PPS land within 1 mile</th></tr></thead>
+        <tbody>
+          {rows.map(([label, p]) => (
+            <tr key={p}><th scope="row">{label}</th><td>{dli.periods[p].sites.length}</td><td>{Math.round(dli.periods[p].reach_share * 100)}% ({dli.periods[p].reach_sq_mi} sq mi)</td></tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="hint">
+        Oregon law requires a school bus for elementary students who live more than 1 mile from school. Circles are straight-line
+        distance, so real walking reach is smaller. They show geography, not how many students are affected: PPS doesn’t publish where
+        immersion students live. An older PPS transportation note says immersion buses outside a school’s own attendance area are
+        limited to native Spanish speakers. Bridger’s Spanish immersion moved to Lent in fall 2023.
+      </p>
+    </div>
+  )
+}
+
 function Home() {
   const [scenario, setScenario] = useState<Scenario>('sq')
   const [band, setBand] = useState<Band>('k5')
   const [compare, setCompare] = useState(false)
   const [programs, setPrograms] = useState(true)
   const [changes, setChanges] = useState(true)
+  const [dliReach, setDliReach] = useState(false)
+  const [dli, setDli] = useState<DliReach | null>(null)
   const [position, setPosition] = useState<[number, number] | null>(null)
   const [focusSelection, setFocusSelection] = useState(false)
   const [locationName, setLocationName] = useState('')
@@ -225,11 +258,12 @@ function Home() {
     setCompare(!!h.compare)
     setPrograms(h.programs !== false)
     setChanges(h.changes !== false)
+    setDliReach(!!h.dliReach)
     if (h.position) { setPosition(h.position); setFocusSelection(true); setLocationName('Shared location') }
     if (window.matchMedia(MOBILE).matches && !h.position) setSheet('peek')
     setHydrated(true)
   }, [])
-  useEffect(() => { if (hydrated) writeHash({ scenario, band, compare, programs, changes, position }) }, [hydrated, scenario, band, compare, programs, changes, position])
+  useEffect(() => { if (hydrated) writeHash({ scenario, band, compare, programs, changes, dliReach, position }) }, [hydrated, scenario, band, compare, programs, changes, dliReach, position])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -248,6 +282,11 @@ function Home() {
     })))
       .then((entries) => setDatasets(Object.fromEntries(entries)))
       .catch((e) => { if (e.name !== 'AbortError') setDataError(true) })
+    // optional overlay data: if it fails, the setting simply has nothing to show
+    fetch('/data/dli_reach.json', { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: DliReach | null) => setDli(d))
+      .catch(() => {})
     return () => controller.abort()
   }, [])
 
@@ -318,7 +357,7 @@ function Home() {
 
   return (
     <main>
-      <BoundaryMap datasets={datasets} scenario={scenario} band={band} compare={compare} programs={programs} changes={changes} position={position}
+      <BoundaryMap datasets={datasets} scenario={scenario} band={band} compare={compare} programs={programs} changes={changes} dli={dli} dliReach={dliReach} position={position}
         focusSelection={focusSelection} panelInset={panelInset} onSelect={select} />
 
       <aside className={dragHeight !== null ? 'panel dragging' : 'panel'} ref={panel} data-sheet={mobile ? sheet : undefined}
@@ -381,6 +420,12 @@ function Home() {
             </p>
           </div>
         )}
+
+        <label className="check">
+          <input type="checkbox" checked={dliReach} onChange={(e) => setDliReach(e.target.checked)} />
+          <span>Spanish immersion: 1-mile reach (elementary)</span>
+        </label>
+        {dliReach && dli && <DliSummary dli={dli} scenario={scenario} />}
 
         <form className="search" role="search" onSubmit={search}>
           <label htmlFor="address" className="control-label">Look up an address</label>
