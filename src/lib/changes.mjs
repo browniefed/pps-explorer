@@ -1,7 +1,6 @@
 import { CHANGES } from './changes-data.mjs'
 import { bands } from './assignments.mjs'
-import { list as join, t } from './i18n.mjs'
-import { LANGUAGE_NAMES_ES, PROGRAM_NAMES_ES } from './strings.mjs'
+import { list as join, languageName, memoText, programName, t } from './i18n.mjs'
 
 // School names differ across sources ("MLK Jr" on maps, "Dr. Martin Luther King Jr." in the memo,
 // "Gray" vs "Robert Gray", "Sunnyside" vs "Sunnyside Environmental"); compare on a normalised key.
@@ -26,14 +25,12 @@ const involves = (e, key) =>
   (e.from && e.from.some((s) => schoolKey(s) === key)) ||
   (e.schools && e.schools.some((s) => schoolKey(s) === key))
 
-// Translated fields of an event: detail_es / text_es, program names from strings.mjs.
-const field = (e, name, lang) => (lang === 'es' && e[`${name}_es`]) || e[name]
-export const programName = (program, lang) => (lang === 'es' && PROGRAM_NAMES_ES[program]) || program
+export { programName }
 
 // One plain sentence describing an event, from the point of view of `key` when given.
 export function describe(e, key, lang = 'en') {
   const is = (s) => key && schoolKey(s) === key
-  const detail = field(e, 'detail', lang)
+  const detail = memoText(e, 'detail', lang)
   switch (e.kind) {
     case 'close':
       if (key && !is(e.school)) return t(lang, 'closeReceives', { school: e.school, detail })
@@ -51,7 +48,7 @@ export function describe(e, key, lang = 'en') {
       if (key && is(e.to)) return t(lang, 'gradesReceives', { school: e.school })
       return t(lang, 'gradesSelf', { school: e.school, to: e.to })
     default:
-      return field(e, 'text', lang)
+      return memoText(e, 'text', lang)
   }
 }
 
@@ -93,7 +90,7 @@ export function spotNotes(scenario, results, areaNames, labels = {}, lang = 'en'
         if (!explained && !areaNames[`${scenario}_${b}`]?.has(key)) {
           const label = labels[`${scenario}_${b}`]?.[key] ?? ''
           const langs = [...label.matchAll(/(Spanish|Mandarin|Vietnamese|Japanese|Russian) Immersion/g)].map((m) => m[1])
-          const names = langs.map((l) => (lang === 'es' ? LANGUAGE_NAMES_ES[l] ?? l : l))
+          const names = langs.map((l) => languageName(l, lang))
           const as = names.length ? t(lang, 'noteNoAreaAs', { langs: join(lang, names) }) : ''
           add(short(before), t(lang, 'noteNoArea', { before: short(before), after: short(after), scenario: scenarioName, as }))
         }

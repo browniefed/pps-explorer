@@ -3,7 +3,7 @@ import type * as Leaflet from 'leaflet'
 import type { Feature, FeatureCollection, Polygon, MultiPolygon } from 'geojson'
 import type { Band, Scenario } from '../lib/assignments.mjs'
 import { describe, eventsFor, programName, schoolKey } from '../lib/changes.mjs'
-import { mapLabel as labelIn, t, type Lang } from '../lib/i18n.mjs'
+import { mapLabel as labelIn, memoText, t, type Lang } from '../lib/i18n.mjs'
 import { closureMoves, immersionSites, PROGRAM_COLORS, programMoves, type ProgramMove } from '../lib/programs.mjs'
 
 // Fill colours taken from the PPS map legend.
@@ -107,7 +107,7 @@ function arrowLayers(lf: typeof Leaflet, m: Leaflet.Map, move: ProgramMove & { d
   const ll = (p: { x: number; y: number }) => m.layerPointToLatLng(lf.point(p.x, p.y))
   const line = pts.map(ll)
   const tipText = move.kind === 'closure'
-    ? t(lang, 'arrowClosure', { from: move.fromName, to: move.toName, detail: (lang === 'es' && move.detail_es) || move.detail })
+    ? t(lang, 'arrowClosure', { from: move.fromName, to: move.toName, detail: memoText(move, 'detail', lang) })
     : t(lang, 'arrowProgram', { program: programName(move.program, lang), from: move.fromName, to: move.toName })
   return [
     lf.polyline(line, { pane: 'arrows', color: '#ffffff', weight: 7, opacity: 0.9, interactive: false }),

@@ -5,7 +5,7 @@ import { BoundaryMap, CLUSTERS, type DliReach, type Layer } from '../components/
 import { assignmentsAt, bands, scenarios, shortName, type Assignment, type Band, type Scenario } from '../lib/assignments.mjs'
 import { describe, digest, programName, schoolKey, spotNotes, type ChangeEvent } from '../lib/changes.mjs'
 import { SUMMARY } from '../lib/changes-data.mjs'
-import { initialLang, LANGS, list, pct as fmtPct, t, type Lang } from '../lib/i18n.mjs'
+import { initialLang, LANGS, list, LOCALES, memoText, pct as fmtPct, t, type Lang } from '../lib/i18n.mjs'
 import { PROGRAM_COLORS } from '../lib/programs.mjs'
 
 export const Route = createFileRoute('/')({ component: Home })
@@ -88,20 +88,20 @@ function Cell({ a, lang }: { a: Assignment; lang: Lang }) {
 
 // School names in a change list are buttons that jump to that school on the map.
 function SchoolLinks({ names, onGo, lang }: { names: string[]; onGo: (name: string) => void; lang: Lang }) {
-  const and = lang === 'es' ? ' y ' : ' and '
+  const { and, sep } = LOCALES[lang]
   return <>{names.map((n, i) => (
-    <span key={n}>{i > 0 && (i === names.length - 1 ? and : ', ')}<button type="button" className="link" onClick={() => onGo(n)}>{n}</button></span>
+    <span key={n}>{i > 0 && (i === names.length - 1 ? and : sep)}<button type="button" className="link" onClick={() => onGo(n)}>{n}</button></span>
   ))}</>
 }
 
 function ChangeItem({ e, onGo, lang }: { e: ChangeEvent; onGo: (name: string) => void; lang: Lang }) {
-  const detail = e.kind === 'close' || e.kind === 'program' ? (lang === 'es' && e.detail_es) || e.detail : undefined
+  const detail = e.kind === 'close' || e.kind === 'program' ? memoText(e, 'detail', lang) : undefined
   switch (e.kind) {
     case 'close':
       return <li><SchoolLinks names={[e.school]} onGo={onGo} lang={lang} />{e.to && <> → <SchoolLinks names={e.to} onGo={onGo} lang={lang} /></>}{detail && <span className="detail"> {detail}</span>}</li>
     case 'program': {
-      const name = programName(e.program, lang)
-      return <li>{name.charAt(0).toUpperCase() + name.slice(1)}: <SchoolLinks names={e.from} onGo={onGo} lang={lang} /> → <SchoolLinks names={[e.to]} onGo={onGo} lang={lang} />{detail && <span className="detail"> {detail}</span>}</li>
+      const name = t(lang, 'programTitle', { program: programName(e.program, lang) })
+      return <li>{name}: <SchoolLinks names={e.from} onGo={onGo} lang={lang} /> → <SchoolLinks names={[e.to]} onGo={onGo} lang={lang} />{detail && <span className="detail"> {detail}</span>}</li>
     }
     case 'grades':
       return <li><SchoolLinks names={[e.school]} onGo={onGo} lang={lang} /> 6–8 → <SchoolLinks names={[e.to]} onGo={onGo} lang={lang} /></li>
@@ -364,7 +364,6 @@ function Home() {
   const scenarioNames = Object.fromEntries(scenarios.map((s) => [s, tr(`scenario.${s}`)])) as Record<Scenario, string>
   const shownLocation = locationName === '@sharedLocation' ? tr('sharedLocation')
     : locationName.startsWith('@school:') ? tr('schoolLocation', { name: locationName.slice(8) }) : locationName
-  const other: Lang = lang === 'en' ? 'es' : 'en'
 
   return (
     <main>
@@ -390,10 +389,14 @@ function Home() {
               {tr('contact')}{' '}
               <a href="mailto:browniefed@gmail.com?subject=PPS%20School%20Explorer">browniefed@gmail.com</a>
             </p>
-            <button type="button" className="lang-toggle" lang={other} aria-label={t(other, 'langButtonLabel')} onClick={() => setLang(other)}>
-              {LANGS[other]}
-            </button>
+            <label className="lang-picker">
+              <span className="visually-hidden">{tr('languageLabel')}{lang !== 'en' && ' / Language'}</span>
+              <select value={lang} onChange={(ev) => setLang(ev.target.value as Lang)}>
+                {(Object.keys(LANGS) as Lang[]).map((l) => <option key={l} value={l} lang={l}>{LANGS[l]}</option>)}
+              </select>
+            </label>
           </div>
+          {!LOCALES[lang].reviewed && <p className="translation-note">{tr('translationNote')}</p>}
           <Segmented label={tr('scenarioLabel')} value={scenario} keys={scenarios} options={scenarioNames} onChange={setScenario} large />
         </div>
 
