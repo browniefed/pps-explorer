@@ -54,6 +54,20 @@ test('high school layers have one area per cluster and school markers load', () 
   }
 })
 
+test('every school has its own marker (Richmond once landed on Atkinson\'s dot)', () => {
+  for (const s of scenarios) for (const b of bands) {
+    const seen = new Map()
+    for (const f of JSON.parse(readFileSync(`public/data/${s}_${b}_schools.geojson`)).features) {
+      const at = f.geometry.coordinates.join()
+      assert(!seen.has(at), `${s}_${b}: ${f.properties.name} and ${seen.get(at)} share a marker`)
+      seen.set(at, f.properties.name)
+    }
+  }
+  const richmond = JSON.parse(readFileSync('public/data/sq_k5_schools.geojson')).features.find((f) => f.properties.name.startsWith('Richmond'))
+  const [lon, lat] = richmond.geometry.coordinates
+  assert(Math.hypot((lat - 45.5064) * 111320, (lon + 122.6199) * 78000) < 100, 'Richmond is at 2276 SE 41st Ave (NCES)')
+})
+
 test('status quo keeps its K-8 areas, including the Skyline inset', () => {
   const k5 = JSON.parse(readFileSync('public/data/sq_k5.geojson')).features
   const k8 = k5.filter((f) => f.properties.level === 'K-8').map((f) => f.properties.name)
