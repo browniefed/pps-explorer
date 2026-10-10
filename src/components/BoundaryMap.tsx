@@ -64,6 +64,28 @@ function labelPoint(f: Feature): [number, number] {
   return best
 }
 
+// Permanent labels are placed independently, so an area's name (at its centre) can land on an
+// immersion label (beside the school), and neighbouring schools' labels can land on each other.
+// Immersion labels go first and only nudge up or down; each area name then keeps its spot if free,
+// else nudges, else hides until zoomed in.
+const NUDGES = [0, 14, -14, 26, -26]
+function declutter(pane: HTMLElement) {
+  const labels = [...pane.querySelectorAll<HTMLElement>('.site-label'), ...pane.querySelectorAll<HTMLElement>('.area-label')]
+  for (const el of labels) { el.style.translate = ''; el.style.visibility = '' }
+  const rects = labels.map((el) => el.getBoundingClientRect())
+  const pad = 2
+  const placed: DOMRect[] = []
+  const hits = (r: DOMRect, dy: number) => placed.some((q) =>
+    r.left - pad < q.right && q.left < r.right + pad && r.top + dy - pad < q.bottom && q.top < r.bottom + dy + pad)
+  labels.forEach((el, i) => {
+    const r = rects[i], site = el.classList.contains('site-label')
+    const dy = NUDGES.find((d) => !hits(r, d)) ?? (site ? 0 : undefined)
+    if (dy === undefined) { el.style.visibility = 'hidden'; return }
+    if (dy) el.style.translate = `0 ${dy}px`
+    placed.push(new DOMRect(r.x, r.y + dy, r.width, r.height))
+  })
+}
+
 // School marker tooltip: the map label plus what the board memo says happens to the school here.
 function schoolTip(name: string, scenario: Scenario, lang: Lang) {
   const tip = document.createElement('div')
@@ -159,6 +181,9 @@ export function BoundaryMap({ datasets, scenario, band, compare, programs, chang
       // street names drawn above the coloured areas so they stay readable
       lf.tileLayer(ESRI + 'World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { pane: 'reference', maxZoom: 18, maxNativeZoom: 16 }).addTo(m)
       m.on('click', (e) => select.current([e.latlng.lat, e.latlng.lng]))
+      let pending = 0
+      const tidy = () => { cancelAnimationFrame(pending); pending = requestAnimationFrame(() => declutter(m.getPane('labels')!)) }
+      m.on('zoomend layeradd layerremove', tidy)
       setReady(true)
     }).catch(() => setError('Could not initialize the map.'))
     return () => { disposed = true; map.current?.remove(); map.current = null }
