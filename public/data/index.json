@@ -2,7 +2,8 @@
  "scenarios": {
   "sq": "Status Quo",
   "a": "Scenario A",
-  "b": "Scenario B"
+  "b": "Scenario B",
+  "r": "Superintendent's Recommendation"
  },
  "bands": {
   "k5": "K-5",
@@ -45,6 +46,18 @@
   "b_912": {
    "areas": 8,
    "schools": 9
+  },
+  "r_912": {
+   "areas": 8,
+   "schools": 9
+  },
+  "r_k5": {
+   "areas": 40,
+   "schools": 58
+  },
+  "r_68": {
+   "areas": 16,
+   "schools": 21
   }
  }
 }

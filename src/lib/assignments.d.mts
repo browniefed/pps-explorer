@@ -1,5 +1,5 @@
 import type { FeatureCollection } from 'geojson'
-export type Scenario = 'sq' | 'a' | 'b'
+export type Scenario = 'sq' | 'a' | 'b' | 'r'
 export type Band = 'k5' | '68' | '912'
 export const scenarios: readonly Scenario[]
 export const bands: readonly Band[]

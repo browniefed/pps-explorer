@@ -20,7 +20,7 @@ const strings = {
   mapLabel: 'Карта школьных зон. Нажмите на место, чтобы увидеть его школы.',
 
   howToTitle: 'Как пользоваться картой',
-  howTo1: 'Выберите вариант: «Без изменений», «Вариант A» или «Вариант B».',
+  howTo1: 'Выберите план: «Без изменений», Вариант A, Вариант B или Рекомендация.',
   howTo2: 'Выберите классы: K–5, 6–8 или 9–12.',
   howTo3: 'Введите свой адрес или нажмите на карту. Вы увидите свои школы в каждом варианте.',
 
@@ -31,7 +31,7 @@ const strings = {
   'scenarioShort.sq': 'Без изм.',
   'scenarioShort.a': 'Вар. A',
   'scenarioShort.b': 'Вар. B',
-  scenarioHint: 'Portland Public Schools (PPS, государственный школьный округ Портленда) предлагает два плана: варианты A и B. «Без изменений» показывает, как сейчас. Решение ещё не принято.',
+  scenarioHint: '«Без изменений» показывает, как сейчас. Варианты A и B — первые два плана Portland Public Schools (PPS, государственный школьный округ Портленда). Рекомендация — итоговый план суперинтенданта. Школьный совет голосует 15 декабря.',
   gradesLabel: 'Классы',
 
   compareToggle: 'Показать нынешние границы поверх (пунктиром)',
@@ -67,7 +67,7 @@ const strings = {
   lookupTitle: 'Школы в этом месте',
   lookupChanged: 'Жёлтая ячейка означает, что школа будет другой, чем сейчас.',
   lookupNear: '* Это место находится на линии границы, поэтому мы показываем ближайшую зону. Пожалуйста, уточните в PPS.',
-  lookupChooseScenario: 'Выберите вариант A или B, чтобы увидеть, что изменится для этих школ.',
+  lookupChooseScenario: 'Выберите вариант или Рекомендацию, чтобы увидеть, что изменится для этих школ.',
   lookupNotesTitle: ({ scenario }) => `Что это значит: ${scenario}`,
   cellOverlap: 'Зоны пересекаются',
   cellOutside: 'Вне округа',
@@ -98,12 +98,12 @@ const strings = {
   dliNote: 'По закону Орегона ученики начальной школы, живущие дальше 1 мили от школы, получают школьный автобус. Кружки показывают расстояние по прямой, поэтому реальный путь пешком длиннее. Кружки показывают места, а не число учеников. PPS не публикует, где живут ученики программ погружения. В старой записке PPS сказано, что автобусы программ погружения за пределами зоны школы — только для учеников, для которых испанский родной. Программа погружения в испанский язык из школы Bridger перешла в школу Lent осенью 2023 года.',
 
   timelineTitle: 'Что дальше',
-  timeline1: ['6 октября 2026 г.:', 'PPS представляет варианты Школьному совету.'],
-  timeline2: ['Октябрь–ноябрь:', 'Семьи и жители высказывают своё мнение.'],
-  timeline3: ['Середина ноября:', 'Суперинтендант выбирает один план и рекомендует его.'],
-  timeline4: ['Декабрь:', 'Школьный совет голосует на открытом заседании.'],
-  timeline5: ['Осень 2027 г.:', 'Изменения начинаются в 2027–28 учебном году.'],
-  timelineNote: 'Это планы, а не решения. PPS ещё планирует автобусы, персонал и поддержку для учеников, которые переходят в другую школу.',
+  timeline1: ['6 октября 2026 года:', 'PPS показали Школьному совету варианты A и B.'],
+  timeline2: ['13 ноября:', 'Суперинтендант опубликовала свою рекомендацию.'],
+  timeline3: ['17 ноября – 3 декабря:', 'Школьный совет обсуждает её. Встречи для отзывов: Franklin High School (19 ноября) и Grant High School (3 декабря). Информационная встреча: McDaniel High School (21 ноября).'],
+  timeline4: ['15 декабря:', 'Школьный совет голосует.'],
+  timeline5: ['Осень 2027 года:', 'Начинаются первые изменения.'],
+  timelineNote: 'Ничего не решено, пока совет не проголосует. PPS ещё планируют автобусы, персонал и поддержку для учеников, которые переходят в другую школу.',
   feedbackTitle: 'Скажите PPS, что Вы думаете',
   feedbackEmail: 'Пишите на',
   feedbackRsvp: 'Записаться на встречу с жителями',
@@ -140,6 +140,18 @@ const strings = {
     `Школа ${before} не закрывается. На карте PPS («${scenario}») школы ${before} и ${after} находятся внутри одной границы. PPS не уточняет, какая школа будет обслуживать нынешнюю зону ${before}. Пожалуйста, спросите PPS: Rightsizing@pps.net.`,
   noteNoArea: ({ before, after, scenario, as }) =>
     `Школа ${before} не закрывается. Она остаётся открытой${as}. На карте «${scenario}» у неё нет своей районной зоны, поэтому это место относится к школе ${after}.`,
+  'scenario.r': 'Рекомендация',
+  'scenarioShort.r': 'Рекоменд.',
+  changesSummaryRec: ({ closures, first, second, moving, share, sqShare }) =>
+    `Закрываются школы: ${closures} (${first} осенью 2027 года и ${second} осенью 2028 года). Около ${moving} учеников K–8 переходят в другую школу, включая тех, чья программа переезжает. По прогнозу PPS, к 2031–32 году в ${share} начальных школ будет не меньше 360 учеников (без изменений: ${sqShare}).`,
+  groupYear: ({ year }) => `С осени ${year} года`,
+  groupKept: 'Изменено после отзывов жителей',
+  changesSourceRec: 'По записке суперинтенданта для Школьного совета с рекомендацией от 12 ноября 2026 года.',
+  fromFall: ({ year, text }) => `С осени ${year} года: ${text}`,
+  timeline6: ['Осень 2028 года:', 'Происходят остальные изменения.'],
+  sourceRecMemo: 'Записка с рекомендацией суперинтенданта (PDF, на английском)',
+  sourceRecFinder: 'Rightsizing School Finder от PPS (карта с границами Рекомендации; на английском)',
+  methodRec: 'Границы Рекомендации взяты из картографических данных самих PPS (Rightsizing School Finder). Если в этих данных участок пропущен, он остаётся за сегодняшней школой.',
   noteNoAreaAs: ({ langs }) => ` как школа с погружением в ${langs} язык`,
 }
 
@@ -163,6 +175,21 @@ const memo = {
   'Stephenson stays open with no changes. (It closes in Scenario A.)': 'Stephenson остаётся открытой без изменений. (В варианте A она закрывается.)',
   'Rose City Park stays open. It keeps its neighborhood area and Vietnamese immersion. (In Scenario A, both move.)': 'Rose City Park остаётся открытой. У неё остаются районная зона и программа погружения во вьетнамский язык. (В варианте A и то, и другое переходит.)',
   'Lewis stays open and gets part of Whitman’s area. (It closes in Scenario A.)': 'Lewis остаётся открытой и получает часть зоны Whitman. (В варианте A она закрывается.)',
+  "Starting in fall 2028, students from the Peninsula area go to George for middle school instead of Ockley Green.": "С осени 2028 года ученики из района Peninsula будут ходить в среднюю школу George, а не Ockley Green.",
+  "The Bybee Lakes area moves from Faubion to Astor K–8, and from Jefferson to Roosevelt for high school.": "Район Bybee Lakes переходит из Faubion в Astor K–8, а для старшей школы — из Jefferson в Roosevelt.",
+  "In fall 2027, Beverly Cleary’s K–5 students join Irvington in the Irvington building while Beverly Cleary gets earthquake upgrades. In fall 2028, the combined school moves to the Beverly Cleary building. Irvington’s middle school area goes to Beaumont.": "Осенью 2027 года ученики K–5 из Beverly Cleary переходят к Irvington в здание Irvington, пока здание Beverly Cleary укрепляют от землетрясений. Осенью 2028 года объединённая школа переезжает в здание Beverly Cleary. Район средней школы Irvington переходит в Beaumont.",
+  "Rigler becomes a whole-school Spanish immersion school. Its neighborhood K–5 students go to Scott.": "Rigler становится школой, где все классы учатся с погружением в испанский язык. Ученики K–5 из её района переходят в Scott.",
+  "Students north of E. Burnside St. go to Sunnyside. The rest go to Abernethy.": "Ученики, живущие к северу от E. Burnside St., переходят в Sunnyside. Остальные — в Abernethy.",
+  "Sunnyside keeps its environmental focus. It becomes K–5 and still takes some students by lottery.": "Sunnyside сохраняет экологическую направленность. Она становится K–5 и по-прежнему принимает часть учеников по жеребьёвке.",
+  "Students from the Atkinson and Creston areas go to Kellogg for middle school, starting with 6th grade.": "Ученики из районов Atkinson и Creston будут ходить в среднюю школу Kellogg, начиная с 6-го класса.",
+  "Lent becomes a whole-school Spanish immersion school. PPS’s map moves Lent’s neighborhood area to Kelly for K–5 and to Brentwood for middle school.": "Lent становится школой, где все классы учатся с погружением в испанский язык. На карте PPS район Lent переходит в Kelly для K–5 и в Brentwood для средней школы.",
+  "Duniway’s area west of McLoughlin Blvd. goes to Llewellyn.": "Часть района Duniway к западу от McLoughlin Blvd. переходит в Llewellyn.",
+  "Sunnyside’s area and part of Woodstock’s go to Cleveland for high school instead of Franklin.": "Район Sunnyside и часть района Woodstock будут относиться к старшей школе Cleveland, а не Franklin.",
+  "Whitman’s area goes to Franklin for high school instead of Cleveland.": "Район Whitman будет относиться к старшей школе Franklin, а не Cleveland.",
+  "MLC becomes K–8. Its 9–12 students can go to Alliance High School, a focus option, or their neighborhood high school.": "MLC становится K–8. Её ученики 9–12 классов могут перейти в Alliance High School, в специальную программу или в районную старшую школу.",
+  "Sellwood, James John, Maplewood and Stephenson stay open. Scenario A or B would have closed them.": "Sellwood, James John, Maplewood и Stephenson остаются открытыми. По варианту A или B их бы закрыли.",
+  "Skyline students keep going to Lincoln for high school.": "Ученики Skyline по-прежнему будут ходить в старшую школу Lincoln.",
+  "MLK Jr. keeps its Mandarin immersion program.": "MLK Jr. сохраняет программу погружения в китайский язык (мандарин).",
 }
 
 // written to follow «Программа …»

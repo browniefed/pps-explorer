@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type * as Leaflet from 'leaflet'
 import type { Feature, FeatureCollection, Polygon, MultiPolygon } from 'geojson'
 import type { Band, Scenario } from '../lib/assignments.mjs'
-import { describe, eventsFor, programName, schoolKey } from '../lib/changes.mjs'
+import { dated, describe, eventsFor, programName, schoolKey } from '../lib/changes.mjs'
 import { mapLabel as labelIn, memoText, t, type Lang } from '../lib/i18n.mjs'
 import { closureMoves, immersionSites, PROGRAM_COLORS, programMoves, type ProgramMove } from '../lib/programs.mjs'
 
@@ -22,7 +22,7 @@ export type Layer = { areas: FeatureCollection; schools: FeatureCollection; chan
 
 // Spanish DLI elementary sites per period and their 1-mile reach (scripts/pipeline/dli.py)
 export type DliPeriod = { sites: { name: string; coords: [number, number]; note?: string | null }[]; reach_sq_mi: number; reach_share: number }
-export type DliReach = { radius_miles: number; land_sq_mi: number; periods: Record<'2022' | 'sq' | 'a' | 'b', DliPeriod> }
+export type DliReach = { radius_miles: number; land_sq_mi: number; periods: Record<'2022' | 'sq' | 'a' | 'b' | 'r', DliPeriod> }
 const MILE_M = 1609.344
 const DLI_COLOR = '#d9480f'
 
@@ -96,7 +96,7 @@ function schoolTip(name: string, scenario: Scenario, lang: Lang) {
   const key = schoolKey(name)
   for (const e of eventsFor(scenario, name)) {
     const p = document.createElement('p')
-    p.textContent = describe(e, key, lang)
+    p.textContent = dated(e, describe(e, key, lang), lang)
     tip.append(p)
   }
   return tip

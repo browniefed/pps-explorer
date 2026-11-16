@@ -32,7 +32,7 @@ for (const [code, loc] of Object.entries(LOCALES)) {
 const SAMPLE = { moves: true, scenario: 'Escenario A', n: 1, share: '50%', sqShare: '48%', moving: '27%', closures: 14, boundary: 38,
   program: 'inmersión en español', from: 'Scott', to: 'Rigler', school: 'Scott', before: 'Rigler', after: 'Scott', langs: 'español',
   as: ' como escuela de inmersión en español', a: 'Rigler', b: 'Scott', when: 'hoy', lost: 'Bridger', name: 'Scott', parts: 'Lincoln (54%)',
-  last: 'Wells-Barnett (46%)', detail: '', others: '', band: 'K–5' }
+  last: 'Wells-Barnett (46%)', detail: '', others: '', band: 'K–5', first: 5, second: 5, year: 2027, text: 'Scott' }
 
 test('Spanish follows the style guide: usted, no tú/vos', () => {
   const all = Object.values(STRINGS.es).map((v) => (typeof v === 'function' ? v(SAMPLE) : v)).flat().join(' ')

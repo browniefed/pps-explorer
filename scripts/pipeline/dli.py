@@ -8,7 +8,7 @@ where students could walk. Circles are straight-line; the law measures along a r
 real walking reach is smaller.
 
 Sites per period:
-- sq, a, b: elementary schools labelled "Spanish Immersion" on that scenario's K-5 map. The status quo
+- sq, a, b, r: elementary schools labelled "Spanish Immersion" on that scenario's K-5 map. The status quo
   set matches PPS's "Enrollment Details for Language Immersion Schools, October 2025".
 - 2022: the status quo set plus Bridger, whose Spanish immersion (190 students in 2022-23) moved to
   Lent in fall 2023.
@@ -37,7 +37,7 @@ def main(data_dir, district_path, water_path):
     land = district.difference(ft(shape(json.load(open(water_path))["geometry"]).buffer(0)))
 
     points, sites = {}, {}
-    for sc in ("sq", "a", "b"):
+    for sc in ("sq", "a", "b", "r"):
         feats = json.load(open(f"{data_dir}/{sc}_k5_schools.geojson"))["features"]
         for f in feats:
             points.setdefault(short(f["properties"]["name"]), f["geometry"]["coordinates"])
@@ -45,7 +45,7 @@ def main(data_dir, district_path, water_path):
     sites["2022"] = sorted(sites["sq"] + list(EXTRA_2022))
 
     out = {"radius_miles": 1, "land_sq_mi": round(land.area / SQ_MI_FT, 1), "periods": {}}
-    for period in ("2022", "sq", "a", "b"):
+    for period in ("2022", "sq", "a", "b", "r"):
         reach = unary_union([ft(Point(points[n])).buffer(MILE_FT, 64) for n in sites[period]]).intersection(land)
         out["periods"][period] = {
             "sites": [{"name": n, "coords": points[n], "note": EXTRA_2022.get(n) if period == "2022" else None} for n in sites[period]],

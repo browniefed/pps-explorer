@@ -52,6 +52,11 @@ export function describe(e, key, lang = 'en') {
   }
 }
 
+// A sentence about a change, led by when it starts if the plan phases it ("Starting fall 2028: ...").
+export function dated(e, text, lang = 'en') {
+  return e.year ? t(lang, 'fromFall', { year: e.year, text }) : text
+}
+
 export function eventsFor(scenario, name) {
   const key = schoolKey(name)
   return (CHANGES[scenario] ?? []).filter((e) => involves(e, key))
@@ -99,15 +104,16 @@ export function spotNotes(scenario, results, areaNames, labels = {}, lang = 'en'
     // today's school first, then the school this spot is assigned to under the scenario
     for (const name of [before, after]) {
       if (!name) continue
-      for (const e of eventsFor(scenario, name)) add(short(name), describe(e, schoolKey(name), lang))
+      for (const e of eventsFor(scenario, name)) add(short(name), dated(e, describe(e, schoolKey(name), lang), lang))
     }
   }
   return notes
 }
 
-// Grouped list for the "What changes" panel.
-export function digest(scenario) {
-  const events = CHANGES[scenario] ?? []
+// Grouped list for the "What changes" panel; `year` limits it to changes starting that fall (null:
+// changes with no date, such as schools the recommendation keeps open).
+export function digest(scenario, year) {
+  const events = (CHANGES[scenario] ?? []).filter((e) => year === undefined || (e.year ?? null) === year)
   return {
     closures: events.filter((e) => e.kind === 'close'),
     programs: events.filter((e) => e.kind === 'program'),

@@ -11,7 +11,7 @@ npm run dev
 
 Open http://localhost:3000. Node 22.12+ is required. The map fills the window with a floating panel (a bottom sheet on phones):
 
-- Scenario (Status quo / A / B) and grade band (K–5 / 6–8 / 9–12) switches; areas are filled by high-school cluster using the PPS legend colours, K-8 areas dashed
+- Scenario (Status quo / Superintendent's Recommendation / A / B) and grade band (K–5 / 6–8 / 9–12) switches; areas are filled by high-school cluster using the PPS legend colours, K-8 areas dashed
 - Optional dotted status-quo lines over Scenario A or B
 - Address search (Esri geocoder) or click anywhere: a table shows the school for every scenario and grade band at that spot, with changes from status quo highlighted; points on a boundary line fall back to the nearest area within 150 m and are flagged
 - School markers, area labels when zoomed in, hover details
@@ -55,6 +55,8 @@ npm run data:extract
 - `build.py`: rings → polygons, clipped to each frame; inset geometry fills only what the main map doesn't show. Each area is named from the school icon inside it (neighbourhood school preferred over an immersion program sharing the area) and assigned the cluster it overlaps most.
 - `qa.py`: per-layer coverage against the district (union of 9-12 areas). There are no overlaps. The uncovered remainder is the Willamette River, which K-5 and 6-8 areas stop short of, and hairline slivers between neighbours.
 
+- `rec.py`: the Superintendent's Recommendation (Nov 13, 2026) as scenario `r`. PPS published these boundaries as GIS data, the layer behind its [Rightsizing School Finder](https://pdxschools.maps.arcgis.com/apps/instant/lookup/index.html?appid=d9ede2c73e56499c8f4a382ff0883683); a copy fetched Nov 16 is in `scripts/pipeline/reference/pps_recommendation_boundaries.geojson`. The layer leaves out the K-5 areas of six schools that keep their area (Atkinson, Beverly Cleary, Bridger, Sunnyside, Vernon, most of Faubion); those gaps keep PPS's edges and take today's school. Its years and immersion fields are out of date in places, so school labels and years come from the board memo instead (see the docstring for each fix-up).
+
 Areas come from the PDFs' own vector paths and georeferencing, so positions are accurate to a few metres; still, confirm addresses that sit right on a line with PPS. Immersion-only programs don't get their own area. Original PDFs are in `public/maps`; the previous viewer is in `public/original`.
 
 Address searches go directly from the browser to Esri's geocoder and are not saved by the app. The basemap is Esri World Light Gray Canvas (base + reference labels); attribution is displayed.
@@ -63,11 +65,13 @@ Address searches go directly from the browser to Esri's geocoder and are not sav
 
 `src/lib/changes-data.mjs` transcribes the proposed changes for Scenarios A and B from the PPS board packet for October 6, 2026: the board memo ("Rightsizing Update: Scenario Release", Oct 5) and the regional summaries and district-wide comparison (Oct 3–4). It covers each closure and where its students go, immersion and other program moves, K–8 schools whose grades 6–8 move, and notes such as Sunnyside's focus option ending and Skyline's high school changing to Roosevelt. `src/lib/changes.mjs` turns these into the lookup notes, the "What changes" panel section and the school marker tooltips. It also flags open schools that lose their own attendance area on a scenario map. For example, Rigler stays open and receives Scott's Spanish immersion program, but in Scenarios A and B its area is part of Scott's.
 
+The Superintendent's Recommendation (`r`) is transcribed the same way from her board memo (Nov 12, 2026; `public/maps/recommendation-memo.pdf`), using the region tables on pages 29–41. Each change has a `year`: the recommendation phases changes over fall 2027 and fall 2028, so the "What changes" panel groups them by year and notes lead with "Starting fall 2028:". `tests/recommendation.test.mjs` checks addresses at each closing school against the memo (Rigler's area goes to Scott, Lent's to Kelly, Whitman's high school becomes Franklin, and so on).
+
 `tests/changes.test.mjs` checks the transcription against the maps: every school it names appears on a map, and the closures match the "School Closed" labels exactly (14 in A, 11 in B).
 
 ### Spanish immersion: 1-mile reach
 
-`scripts/pipeline/dli.py` writes `public/data/dli_reach.json`: the elementary schools labelled "Spanish Immersion" on each K-5 map (status quo matches PPS's *Enrollment Details for Language Immersion Schools, October 2025*), plus Bridger for 2022 (its Spanish immersion moved to Lent in fall 2023). It also writes the share of PPS land within one straight-line mile of a site: 18% in 2022 (10 schools), 16% today (9 schools) and 9% in Scenarios A and B (4 schools: César Chávez, Rigler, Lent, Ainsworth). Oregon law (ORS 327.043) requires transport for elementary students who live more than a mile from school; the law measures along a route, so the circles overstate the walkable area. They show geography only, because PPS doesn't publish where immersion students live. The map shows this behind the "Spanish immersion: 1-mile reach" setting.
+`scripts/pipeline/dli.py` writes `public/data/dli_reach.json`: the elementary schools labelled "Spanish Immersion" on each K-5 map (status quo matches PPS's *Enrollment Details for Language Immersion Schools, October 2025*), plus Bridger for 2022 (its Spanish immersion moved to Lent in fall 2023). It also writes the share of PPS land within one straight-line mile of a site: 18% in 2022 (10 schools), 16% today (9 schools) and 9% in Scenarios A and B and the Recommendation (4 schools: César Chávez, Rigler, Lent, Ainsworth). Oregon law (ORS 327.043) requires transport for elementary students who live more than a mile from school; the law measures along a route, so the circles overstate the walkable area. They show geography only, because PPS doesn't publish where immersion students live. The map shows this behind the "Spanish immersion: 1-mile reach" setting.
 
 ### Checking against the City of Portland's boundary data
 
@@ -91,6 +95,7 @@ This targets Workers, not the old Pages ZIP. No database is needed for static bo
 ## Sources
 
 - [PPS board map attachments, item 8](https://meetings.boardbook.org/Public/Agenda/915?meeting=769955)
+- [PPS Rightsize page](https://www.pps.net/about/portland-public-schools-information/rightsize/rightsize): Superintendent's Recommendation summary, board memo and Rightsizing School Finder
 - [ppsdata.info](https://ppsdata.info) / [meub/pps-data](https://github.com/meub/pps-data) by Alex Meub
 - [City of Portland School_Boundaries layer](https://services.arcgis.com/quVN97tn06YNGj9s/arcgis/rest/services/School_Boundaries/FeatureServer/0)
 - [Cloudflare TanStack Start integration](https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/)

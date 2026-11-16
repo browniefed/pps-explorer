@@ -1,6 +1,6 @@
 import { lookup, nearest } from './geometry.mjs'
 
-export const scenarios = ['sq', 'a', 'b']
+export const scenarios = ['sq', 'r', 'a', 'b']  // today, the superintendent's recommendation, then the earlier scenarios
 export const bands = ['k5', '68', '912']
 export const NEAR_METRES = 150
 

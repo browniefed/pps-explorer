@@ -27,7 +27,7 @@ test('edge distance and nearest use metres and respect the cutoff', () => {
   assert.equal(nearest(fc, [-122.595, 45.495], 150), null)
 })
 
-const scenarios = ['sq', 'a', 'b'], bands = ['k5', '68', '912']
+const scenarios = ['sq', 'a', 'b', 'r'], bands = ['k5', '68', '912']
 
 test('all nine layers have named areas with closed, finite, Portland-area rings', () => {
   for (const s of scenarios) for (const b of bands) {

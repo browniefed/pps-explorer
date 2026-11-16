@@ -63,6 +63,8 @@ h2 { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
 .seg button:hover { background: var(--pps-tint); }
 .seg button[aria-checked="true"] { background: var(--pps); color: var(--on-pps); font-weight: 700; }
 .seg-large button { padding: 11px 6px; font-size: 16px; }
+/* scenario switch: four plans in two rows (status quo and the recommendation on top) */
+.seg-large { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
 
 button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--pps); outline-offset: 2px; }
 

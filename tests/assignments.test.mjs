@@ -34,7 +34,7 @@ test('shortName drops the level suffix but keeps K-8', () => {
 
 test('known addresses resolve against the real data', () => {
   const datasets = {}
-  for (const s of ['sq', 'a', 'b']) for (const b of ['k5', '68', '912']) datasets[`${s}_${b}`] = JSON.parse(readFileSync(`public/data/${s}_${b}.geojson`))
+  for (const s of ['sq', 'a', 'b', 'r']) for (const b of ['k5', '68', '912']) datasets[`${s}_${b}`] = JSON.parse(readFileSync(`public/data/${s}_${b}.geojson`))
   // 3830 SE Division St (Esri geocode)
   const r = assignmentsAt(datasets, [-122.6236, 45.50458])
   assert.equal(r.sq.k5.school, 'Abernethy Elementary')

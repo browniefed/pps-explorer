@@ -241,6 +241,44 @@
    ],
    "reach_sq_mi": 11.6,
    "reach_share": 0.085
+  },
+  "r": {
+   "sites": [
+    {
+     "name": "Ainsworth",
+     "coords": [
+      -122.699467,
+      45.509843
+     ],
+     "note": null
+    },
+    {
+     "name": "C\u00e9sar Ch\u00e1vez",
+     "coords": [
+      -122.719196,
+      45.584465
+     ],
+     "note": null
+    },
+    {
+     "name": "Lent",
+     "coords": [
+      -122.564179,
+      45.485333
+     ],
+     "note": null
+    },
+    {
+     "name": "Rigler",
+     "coords": [
+      -122.60759,
+      45.556047
+     ],
+     "note": null
+    }
+   ],
+   "reach_sq_mi": 11.6,
+   "reach_share": 0.085
   }
  }
 }

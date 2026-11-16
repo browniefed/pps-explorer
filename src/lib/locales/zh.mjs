@@ -18,7 +18,7 @@ const strings = {
   mapLabel: '学区地图。点击任意位置，查看该处对应的学校。',
 
   howToTitle: '如何使用这张地图',
-  howTo1: '选择方案：维持现状、方案 A 或方案 B。',
+  howTo1: '选择方案：维持现状、方案 A、方案 B 或推荐方案。',
   howTo2: '选择年级：K–5、6–8 或 9–12。',
   howTo3: '输入您的地址，或点击地图。您会看到每个方案下对应的学校。',
 
@@ -29,7 +29,7 @@ const strings = {
   'scenarioShort.sq': '现状',
   'scenarioShort.a': '方案 A',
   'scenarioShort.b': '方案 B',
-  scenarioHint: '波特兰公立学区（PPS）提出了两个方案：A 和 B。“维持现状”显示目前的情况。目前尚未做出决定。',
+  scenarioHint: '“维持现状”显示目前的情况。方案 A 和 B 是波特兰公立学区（PPS）最早提出的两个方案。推荐方案是学区总监的最终方案，教育委员会将于 12 月 15 日投票。',
   gradesLabel: '年级',
 
   compareToggle: '叠加显示现有边界（虚线）',
@@ -65,7 +65,7 @@ const strings = {
   lookupTitle: '此位置的学校',
   lookupChanged: '黄色方框表示学校与现在不同。',
   lookupNear: '* 此位置在边界线上，因此显示最近的区域。请向 PPS 确认。',
-  lookupChooseScenario: '选择方案 A 或 B，查看这些学校会有什么变化。',
+  lookupChooseScenario: '选择一个方案或推荐方案，查看这些学校会有什么变化。',
   lookupNotesTitle: ({ scenario }) => `${scenario}对这里的影响`,
   cellOverlap: '区域重叠',
   cellOutside: '学区以外',
@@ -96,12 +96,12 @@ const strings = {
   dliNote: '俄勒冈州法律规定，住处离学校超过 1 英里的小学生可以乘坐校车。圆环按直线距离计算，实际步行距离会更远。圆环显示的是区域，不是学生人数。PPS 没有公布双语沉浸项目学生的住址。PPS 早前的一份文件说，学区范围以外的双语沉浸项目校车只提供给以西班牙语为母语的学生。Bridger 的西班牙语项目已于 2023 年秋季迁到 Lent。',
 
   timelineTitle: '接下来的安排',
-  timeline1: ['2026 年 10 月 6 日：', 'PPS 向教育委员会提交了方案。'],
-  timeline2: ['10 月至 11 月：', '家庭和社区提出意见。'],
-  timeline3: ['11 月中旬：', '学区总监推荐一个方案。'],
-  timeline4: ['12 月：', '教育委员会在公开会议上投票。'],
-  timeline5: ['2027 年秋季：', '变化从 2027–28 学年开始。'],
-  timelineNote: '这些都还是方案，不是最终决定。PPS 仍在规划校车、人员安排和对转学学生的支持。',
+  timeline1: ['2026 年 10 月 6 日：', 'PPS 向教育委员会提交了方案 A 和 B。'],
+  timeline2: ['11 月 13 日：', '学区总监发布了推荐方案。'],
+  timeline3: ['11 月 17 日至 12 月 3 日：', '教育委员会进行讨论。意见听取会：Franklin High School（11 月 19 日）和 Grant High School（12 月 3 日）。说明会：McDaniel High School（11 月 21 日）。'],
+  timeline4: ['12 月 15 日：', '教育委员会投票。'],
+  timeline5: ['2027 年秋季：', '第一批变化开始。'],
+  timelineNote: '在教育委员会投票之前，一切都还没有定案。PPS 仍在规划校车、人员安排和对转学学生的支持。',
   feedbackTitle: '向 PPS 提出您的意见',
   feedbackEmail: '发送电子邮件',
   feedbackRsvp: '报名参加社区会议',
@@ -137,6 +137,18 @@ const strings = {
     `${before} 不会关闭。在 PPS 的${scenario}地图上，${before} 和 ${after} 在同一条边界内。PPS 没有说明 ${before} 现有的学区范围将由哪所学校服务。请向 PPS 询问：Rightsizing@pps.net。`,
   noteNoArea: ({ before, after, scenario, as }) =>
     `${before} 不会关闭，将继续开放${as}。在${scenario}地图上，它没有自己的社区学区范围，因此这里属于 ${after}。`,
+  'scenario.r': '推荐方案',
+  'scenarioShort.r': '推荐方案',
+  changesSummaryRec: ({ closures, first, second, moving, share, sqShare }) =>
+    `关闭 ${closures} 所学校：2027 年秋季 ${first} 所，2028 年秋季 ${second} 所。约 ${moving} 的 K–8 学生将转校（包括所在项目搬迁的学生）。PPS 预计到 2031–32 学年，${share}的小学将有至少 360 名学生（维持现状：${sqShare}）。`,
+  groupYear: ({ year }) => `${year} 年秋季起`,
+  groupKept: '根据社区意见所做的修改',
+  changesSourceRec: '资料来源：学区总监 2026 年 11 月 12 日致教育委员会的推荐方案备忘录。',
+  fromFall: ({ year, text }) => `${year} 年秋季起：${text}`,
+  timeline6: ['2028 年秋季：', '其余变化进行。'],
+  sourceRecMemo: '学区总监推荐方案备忘录（PDF，英文）',
+  sourceRecFinder: 'PPS Rightsizing School Finder（显示推荐方案学区边界的地图，英文）',
+  methodRec: '推荐方案的边界来自 PPS 自己的地图数据（Rightsizing School Finder）。如果该数据遗漏了某个区域，该区域保留目前的学校。',
   noteNoAreaAs: ({ langs }) => `，作为${langs}双语沉浸学校`,
 }
 
@@ -160,6 +172,21 @@ const memo = {
   'Stephenson stays open with no changes. (It closes in Scenario A.)': 'Stephenson 继续开放，没有变化。（在方案 A 中关闭。）',
   'Rose City Park stays open. It keeps its neighborhood area and Vietnamese immersion. (In Scenario A, both move.)': 'Rose City Park 继续开放，保留社区学区范围和越南语沉浸项目。（在方案 A 中两者都会搬迁。）',
   'Lewis stays open and gets part of Whitman’s area. (It closes in Scenario A.)': 'Lewis 继续开放，并接收 Whitman 的部分区域。（在方案 A 中关闭。）',
+  "Starting in fall 2028, students from the Peninsula area go to George for middle school instead of Ockley Green.": "从 2028 年秋季起，Peninsula 区域的学生初中就读 George，而不是 Ockley Green。",
+  "The Bybee Lakes area moves from Faubion to Astor K–8, and from Jefferson to Roosevelt for high school.": "Bybee Lakes 区域从 Faubion 改为 Astor K–8，高中从 Jefferson 改为 Roosevelt。",
+  "In fall 2027, Beverly Cleary’s K–5 students join Irvington in the Irvington building while Beverly Cleary gets earthquake upgrades. In fall 2028, the combined school moves to the Beverly Cleary building. Irvington’s middle school area goes to Beaumont.": "2027 年秋季，Beverly Cleary 的 K–5 学生在 Irvington 校舍与 Irvington 合并上课，同时 Beverly Cleary 校舍进行抗震加固。2028 年秋季，合并后的学校搬到 Beverly Cleary 校舍。Irvington 的初中学区并入 Beaumont。",
+  "Rigler becomes a whole-school Spanish immersion school. Its neighborhood K–5 students go to Scott.": "Rigler 成为全校西班牙语沉浸学校。其社区的 K–5 学生转到 Scott。",
+  "Students north of E. Burnside St. go to Sunnyside. The rest go to Abernethy.": "E. Burnside St. 以北的学生转到 Sunnyside，其余学生转到 Abernethy。",
+  "Sunnyside keeps its environmental focus. It becomes K–5 and still takes some students by lottery.": "Sunnyside 保留环境特色，改为 K–5，仍通过抽签招收部分学生。",
+  "Students from the Atkinson and Creston areas go to Kellogg for middle school, starting with 6th grade.": "Atkinson 和 Creston 区域的学生初中就读 Kellogg，从六年级开始。",
+  "Lent becomes a whole-school Spanish immersion school. PPS’s map moves Lent’s neighborhood area to Kelly for K–5 and to Brentwood for middle school.": "Lent 成为全校西班牙语沉浸学校。PPS 的地图将 Lent 的社区学区范围划给 Kelly（K–5）和 Brentwood（初中）。",
+  "Duniway’s area west of McLoughlin Blvd. goes to Llewellyn.": "Duniway 学区中 McLoughlin Blvd. 以西的部分并入 Llewellyn。",
+  "Sunnyside’s area and part of Woodstock’s go to Cleveland for high school instead of Franklin.": "Sunnyside 学区和 Woodstock 的部分学区高中改为 Cleveland，而不是 Franklin。",
+  "Whitman’s area goes to Franklin for high school instead of Cleveland.": "Whitman 学区高中改为 Franklin，而不是 Cleveland。",
+  "MLC becomes K–8. Its 9–12 students can go to Alliance High School, a focus option, or their neighborhood high school.": "MLC 改为 K–8。其 9–12 年级学生可以就读 Alliance High School、特色项目或所在社区的高中。",
+  "Sellwood, James John, Maplewood and Stephenson stay open. Scenario A or B would have closed them.": "Sellwood、James John、Maplewood 和 Stephenson 继续开放。方案 A 或 B 原本会关闭这些学校。",
+  "Skyline students keep going to Lincoln for high school.": "Skyline 的学生高中继续就读 Lincoln。",
+  "MLK Jr. keeps its Mandarin immersion program.": "MLK Jr. 保留中文（普通话）沉浸项目。",
 }
 
 const programs = {

@@ -6,7 +6,7 @@ import { closes, describe, eventsFor, schoolKey, spotNotes } from '../src/lib/ch
 import { assignmentsAt } from '../src/lib/assignments.mjs'
 
 const read = (f) => JSON.parse(readFileSync(`public/data/${f}.geojson`))
-const scenarios = ['sq', 'a', 'b'], bands = ['k5', '68', '912']
+const scenarios = ['sq', 'a', 'b', 'r'], bands = ['k5', '68', '912']
 const schoolLayers = Object.fromEntries(scenarios.flatMap((s) => bands.map((b) => [`${s}_${b}`, read(`${s}_${b}_schools`)])))
 const areaLayers = Object.fromEntries(scenarios.flatMap((s) => bands.map((b) => [`${s}_${b}`, read(`${s}_${b}`)])))
 const areaNames = Object.fromEntries(Object.entries(areaLayers).map(([k, fc]) => [k, new Set(fc.features.map((f) => schoolKey(f.properties.name)))]))

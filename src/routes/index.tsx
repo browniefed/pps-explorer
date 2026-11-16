@@ -12,7 +12,10 @@ export const Route = createFileRoute('/')({ component: Home })
 
 const BAND_NAMES: Record<Band, string> = { k5: 'K–5', '68': '6–8', '912': '9–12' }
 // source PDFs in public/maps use these names
-const PDF_SCENARIO: Record<Scenario, string> = { sq: 'current', a: 'a', b: 'b' }
+const PDF_SCENARIO: Record<Exclude<Scenario, 'r'>, string> = { sq: 'current', a: 'a', b: 'b' }
+// the recommendation's boundaries are GIS data, not a PDF per grade band
+const REC_MEMO = '/maps/recommendation-memo.pdf'
+const REC_FINDER = 'https://pdxschools.maps.arcgis.com/apps/instant/lookup/index.html?appid=d9ede2c73e56499c8f4a382ff0883683'
 const PDF_BAND: Record<Band, string> = { k5: 'elementary', '68': 'middle', '912': 'high' }
 const PPS_DOCUMENTS = 'https://meetings.boardbook.org/Public/Agenda/915?meeting=769955'
 const MOBILE = '(max-width: 720px)'
@@ -110,37 +113,63 @@ function ChangeItem({ e, onGo, lang }: { e: ChangeEvent; onGo: (name: string) =>
   }
 }
 
+function ChangeGroups({ scenario, year, onGo, lang }: { scenario: Scenario; year?: number | null; onGo: (name: string) => void; lang: Lang }) {
+  const d = digest(scenario, year)
+  const groups: [string, ChangeEvent[]][] = [
+    [t(lang, 'groupClosing', { n: d.closures.length }), d.closures],
+    [t(lang, 'groupPrograms'), d.programs],
+    [t(lang, 'groupGrades'), d.grades],
+    [t(lang, year === null ? 'groupKept' : 'groupOther'), d.notes],
+  ]
+  return <>{groups.map(([title, events]) => events.length > 0 && (
+    <details key={title}>
+      <summary>{title}</summary>
+      <ul className="change-list">{events.map((e, i) => <ChangeItem key={i} e={e} onGo={onGo} lang={lang} />)}</ul>
+    </details>
+  ))}</>
+}
+
 function Changes({ scenario, onGo, lang }: { scenario: Scenario; onGo: (name: string) => void; lang: Lang }) {
-  const sum = SUMMARY[scenario]
   const p = (x: number) => fmtPct(lang, x)
   if (scenario === 'sq') {
     return (
       <section className="changes">
         <h2>{t(lang, 'changesTitleSq')}</h2>
-        <p className="hint">{t(lang, 'changesSq', { share: p(sum.studentsInSustainableSchools) })}</p>
+        <p className="hint">{t(lang, 'changesSq', { share: p(SUMMARY.sq.studentsInSustainableSchools) })}</p>
       </section>
     )
   }
-  const d = digest(scenario)
-  const groups: [string, ChangeEvent[]][] = [
-    [t(lang, 'groupClosing', { n: d.closures.length }), d.closures],
-    [t(lang, 'groupPrograms'), d.programs],
-    [t(lang, 'groupGrades'), d.grades],
-    [t(lang, 'groupOther'), d.notes],
-  ]
+  const title = <h2>{t(lang, 'changesTitle', { scenario: t(lang, `scenario.${scenario}`) })}</h2>
+  if (scenario === 'r') {
+    // the recommendation phases its changes over two falls
+    const sum = SUMMARY.r
+    return (
+      <section className="changes">
+        {title}
+        <p className="hint">
+          {t(lang, 'changesSummaryRec', { closures: sum.closures, first: sum.closures2027, second: sum.closures2028,
+            moving: p(sum.studentsChangingSchools), share: p(sum.k5SchoolsSustainable), sqShare: p(sum.k5SchoolsSustainableSq) })}
+        </p>
+        {[2027, 2028].map((year) => (
+          <div key={year} className="change-year">
+            <h3>{t(lang, 'groupYear', { year })}</h3>
+            <ChangeGroups scenario={scenario} year={year} onGo={onGo} lang={lang} />
+          </div>
+        ))}
+        <ChangeGroups scenario={scenario} year={null} onGo={onGo} lang={lang} />
+        <p className="hint">{t(lang, 'changesSourceRec')}</p>
+      </section>
+    )
+  }
+  const sum = SUMMARY[scenario]
   return (
     <section className="changes">
-      <h2>{t(lang, 'changesTitle', { scenario: t(lang, `scenario.${scenario}`) })}</h2>
+      {title}
       <p className="hint">
         {t(lang, 'changesSummary', { closures: sum.closures, boundary: sum.boundaryChanges, moving: p(sum.studentsChangingSchools),
           share: p(sum.studentsInSustainableSchools), sqShare: p(SUMMARY.sq.studentsInSustainableSchools) })}
       </p>
-      {groups.map(([title, events]) => events.length > 0 && (
-        <details key={title}>
-          <summary>{title}</summary>
-          <ul className="change-list">{events.map((e, i) => <ChangeItem key={i} e={e} onGo={onGo} lang={lang} />)}</ul>
-        </details>
-      ))}
+      <ChangeGroups scenario={scenario} onGo={onGo} lang={lang} />
       <p className="hint">{t(lang, 'changesSource')}</p>
     </section>
   )
@@ -173,7 +202,7 @@ function DliSummary({ dli, scenario, lang }: { dli: DliReach; scenario: Scenario
 }
 
 function Home() {
-  const [scenario, setScenario] = useState<Scenario>('sq')
+  const [scenario, setScenario] = useState<Scenario>('r')
   const [lang, setLang] = useState<Lang>('en')
   const [band, setBand] = useState<Band>('k5')
   const [compare, setCompare] = useState(false)
@@ -218,7 +247,10 @@ function Home() {
     measure()
     mq.addEventListener('change', measure)
     window.addEventListener('resize', measure)
-    return () => { mq.removeEventListener('change', measure); window.removeEventListener('resize', measure) }
+    // the header's height also changes with the language (longer words, the translation note)
+    const ro = new ResizeObserver(() => { if (sheetTop.current) setPeekHeight(sheetTop.current.offsetHeight) })
+    if (sheetTop.current) ro.observe(sheetTop.current)
+    return () => { mq.removeEventListener('change', measure); window.removeEventListener('resize', measure); ro.disconnect() }
   }, [])
 
   const onGrabDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -444,7 +476,7 @@ function Home() {
             </ul>
             <p className="hint">
               {tr('programsHint', { moves: scenario !== 'sq' })}
-              {band === 'k5' && scenario !== 'sq' && ' ' + tr('programsK5Note')}
+              {band === 'k5' && (scenario === 'a' || scenario === 'b') && ' ' + tr('programsK5Note')}
             </p>
           </div>
         )}
@@ -500,7 +532,7 @@ function Home() {
         <section className="timeline">
           <h2>{tr('timelineTitle')}</h2>
           <ol>
-            {(['timeline1', 'timeline2', 'timeline3', 'timeline4', 'timeline5'] as const).map((k) => {
+            {(['timeline1', 'timeline2', 'timeline3', 'timeline4', 'timeline5', 'timeline6'] as const).map((k) => {
               const [when, what] = t(lang, k) as unknown as [string, string]
               return <li key={k}><strong>{when}</strong> {what}</li>
             })}
@@ -527,7 +559,9 @@ function Home() {
           <h2>{tr('sourcesTitle')}</h2>
           <ul className="sources">
             <li><a href={PPS_DOCUMENTS} target="_blank" rel="noreferrer">{tr('sourceBoard')}</a></li>
-            {scenarios.map((s) => (
+            <li><a href={REC_MEMO} target="_blank" rel="noreferrer">{tr('sourceRecMemo')}</a></li>
+            <li><a href={REC_FINDER} target="_blank" rel="noreferrer">{tr('sourceRecFinder')}</a></li>
+            {(['sq', 'a', 'b'] as const).map((s) => (
               <li key={s}>
                 <a href={`/maps/${PDF_SCENARIO[s]}-${PDF_BAND[band]}.pdf`} target="_blank" rel="noreferrer">
                   {tr('sourceMap', { scenario: scenarioNames[s], band: BAND_NAMES[band] })}
@@ -539,7 +573,7 @@ function Home() {
               {' '}(<a href="https://github.com/meub/pps-data" target="_blank" rel="noreferrer">pps-data</a>). {tr('sourcePpsdataRest')}
             </li>
           </ul>
-          <p>{tr('method')}</p>
+          <p>{tr('method')} {tr('methodRec')}</p>
           <p>{tr('privacy')}</p>
           <p>{tr('notAffiliated')}</p>
         </footer>

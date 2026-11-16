@@ -18,7 +18,7 @@ const strings = {
   mapLabel: 'Bản đồ khu vực ghi danh. Bấm vào một nơi để xem các trường của nơi đó.',
 
   howToTitle: 'Cách dùng bản đồ này',
-  howTo1: 'Chọn một phương án: Không thay đổi, Phương án A hoặc Phương án B.',
+  howTo1: 'Chọn một kế hoạch: Không thay đổi, Phương án A, Phương án B hoặc Đề xuất.',
   howTo2: 'Chọn khối lớp: K–5, 6–8 hoặc 9–12.',
   howTo3: 'Nhập địa chỉ của quý vị hoặc bấm vào bản đồ. Quý vị sẽ thấy các trường trong từng phương án.',
 
@@ -29,7 +29,7 @@ const strings = {
   'scenarioShort.sq': 'Không đổi',
   'scenarioShort.a': 'P.án A',
   'scenarioShort.b': 'P.án B',
-  scenarioHint: 'Portland Public Schools (PPS, học khu công lập Portland) đề xuất hai kế hoạch: Phương án A và B. “Không thay đổi” cho thấy tình hình hiện nay. Chưa có gì là quyết định cuối cùng.',
+  scenarioHint: '“Không thay đổi” cho thấy tình hình hiện nay. Phương án A và B là hai kế hoạch đầu tiên của Portland Public Schools (PPS, học khu công lập Portland). Đề xuất là kế hoạch cuối cùng của Tổng Giám đốc Học khu. Hội đồng Giáo dục sẽ bỏ phiếu ngày 15 tháng 12.',
   gradesLabel: 'Khối lớp',
 
   compareToggle: 'Hiện ranh giới hiện nay ở trên (nét chấm)',
@@ -65,7 +65,7 @@ const strings = {
   lookupTitle: 'Các trường tại nơi này',
   lookupChanged: 'Ô màu vàng nghĩa là trường khác với hiện nay.',
   lookupNear: '* Nơi này nằm trên đường ranh giới, nên chúng tôi hiện khu vực gần nhất. Xin vui lòng hỏi lại PPS.',
-  lookupChooseScenario: 'Chọn Phương án A hoặc B để xem các trường này thay đổi thế nào.',
+  lookupChooseScenario: 'Chọn một phương án hoặc Đề xuất để xem các trường này thay đổi thế nào.',
   lookupNotesTitle: ({ scenario }) => `Ý nghĩa trong ${scenario}`,
   cellOverlap: 'Khu vực chồng lên nhau',
   cellOutside: 'Ngoài học khu',
@@ -96,12 +96,12 @@ const strings = {
   dliNote: 'Luật Oregon quy định học sinh tiểu học sống cách trường hơn 1 dặm được đi xe buýt trường. Vòng tròn dùng khoảng cách đường thẳng, nên quãng đường đi bộ thật dài hơn. Vòng tròn cho thấy địa điểm, không phải số học sinh. PPS không công bố nơi học sinh song ngữ sinh sống. Một ghi chú cũ của PPS nói xe buýt song ngữ ngoài khu vực của trường chỉ dành cho học sinh nói tiếng Tây Ban Nha là tiếng mẹ đẻ. Chương trình song ngữ tiếng Tây Ban Nha của Bridger đã chuyển sang Lent vào mùa thu 2023.',
 
   timelineTitle: 'Bước tiếp theo',
-  timeline1: ['Ngày 6 tháng 10 năm 2026:', 'PPS trình bày các phương án cho Hội đồng Giáo dục.'],
-  timeline2: ['Tháng 10–11:', 'Các gia đình và cộng đồng góp ý.'],
-  timeline3: ['Giữa tháng 11:', 'Tổng Giám đốc Học khu chọn một kế hoạch để đề nghị.'],
-  timeline4: ['Tháng 12:', 'Hội đồng Giáo dục biểu quyết trong một buổi họp công khai.'],
-  timeline5: ['Mùa thu 2027:', 'Các thay đổi bắt đầu trong năm học 2027–28.'],
-  timelineNote: 'Đây là kế hoạch, chưa phải quyết định. PPS vẫn đang lên kế hoạch về xe buýt, nhân viên và hỗ trợ cho học sinh phải đổi trường.',
+  timeline1: ['Ngày 6 tháng 10 năm 2026:', 'PPS trình bày Phương án A và B với Hội đồng Giáo dục.'],
+  timeline2: ['Ngày 13 tháng 11:', 'Tổng Giám đốc Học khu công bố đề xuất.'],
+  timeline3: ['Từ 17 tháng 11 đến 3 tháng 12:', 'Hội đồng Giáo dục thảo luận. Buổi lắng nghe ý kiến tại Franklin High School (19/11) và Grant High School (3/12). Buổi giới thiệu tại McDaniel High School (21/11).'],
+  timeline4: ['Ngày 15 tháng 12:', 'Hội đồng Giáo dục bỏ phiếu.'],
+  timeline5: ['Mùa thu 2027:', 'Những thay đổi đầu tiên bắt đầu.'],
+  timelineNote: 'Chưa có gì là quyết định cho đến khi Hội đồng bỏ phiếu. PPS vẫn đang lên kế hoạch về xe buýt, nhân viên và hỗ trợ cho học sinh phải đổi trường.',
   feedbackTitle: 'Cho PPS biết ý kiến của quý vị',
   feedbackEmail: 'Gửi email đến',
   feedbackRsvp: 'Đăng ký dự một buổi họp cộng đồng',
@@ -137,6 +137,18 @@ const strings = {
     `${before} không đóng cửa. Trên bản đồ ${scenario} của PPS, ${before} và ${after} nằm trong cùng một ranh giới. PPS chưa nói trường nào sẽ phụ trách khu vực hiện nay của ${before}. Xin vui lòng hỏi PPS qua Rightsizing@pps.net.`,
   noteNoArea: ({ before, after, scenario, as }) =>
     `${before} không đóng cửa. Trường vẫn mở${as}. Trên bản đồ ${scenario}, trường không có khu vực khu phố riêng, nên nơi này thuộc ${after}.`,
+  'scenario.r': 'Đề xuất',
+  'scenarioShort.r': 'Đề xuất',
+  changesSummaryRec: ({ closures, first, second, moving, share, sqShare }) =>
+    `${closures} trường đóng cửa: ${first} trường vào mùa thu 2027 và ${second} trường vào mùa thu 2028. Khoảng ${moving} học sinh K–8 đổi trường, kể cả học sinh có chương trình chuyển đi. PPS dự kiến đến 2031–32, ${share} trường tiểu học sẽ có ít nhất 360 học sinh (nếu không thay đổi: ${sqShare}).`,
+  groupYear: ({ year }) => `Từ mùa thu ${year}`,
+  groupKept: 'Thay đổi sau khi nghe ý kiến cộng đồng',
+  changesSourceRec: 'Theo bản ghi nhớ đề xuất của Tổng Giám đốc Học khu gửi Hội đồng Giáo dục, ngày 12 tháng 11 năm 2026.',
+  fromFall: ({ year, text }) => `Từ mùa thu ${year}: ${text}`,
+  timeline6: ['Mùa thu 2028:', 'Các thay đổi còn lại diễn ra.'],
+  sourceRecMemo: 'Bản ghi nhớ đề xuất của Tổng Giám đốc Học khu (PDF, tiếng Anh)',
+  sourceRecFinder: 'Rightsizing School Finder của PPS (bản đồ có ranh giới theo Đề xuất; tiếng Anh)',
+  methodRec: 'Ranh giới của Đề xuất lấy từ dữ liệu bản đồ của chính PPS (Rightsizing School Finder). Ở nơi dữ liệu đó bỏ sót một khu vực, khu vực đó giữ trường hiện nay.',
   noteNoAreaAs: ({ langs }) => ` như một trường song ngữ ${langs}`,
 }
 
@@ -160,6 +172,21 @@ const memo = {
   'Stephenson stays open with no changes. (It closes in Scenario A.)': 'Stephenson vẫn mở và không thay đổi. (Trường đóng cửa trong Phương án A.)',
   'Rose City Park stays open. It keeps its neighborhood area and Vietnamese immersion. (In Scenario A, both move.)': 'Rose City Park vẫn mở. Trường giữ khu vực khu phố và chương trình song ngữ tiếng Việt. (Trong Phương án A, cả hai đều chuyển đi.)',
   'Lewis stays open and gets part of Whitman’s area. (It closes in Scenario A.)': 'Lewis vẫn mở và nhận một phần khu vực của Whitman. (Trường đóng cửa trong Phương án A.)',
+  "Starting in fall 2028, students from the Peninsula area go to George for middle school instead of Ockley Green.": "Từ mùa thu 2028, học sinh khu vực Peninsula học trung học cơ sở tại George thay vì Ockley Green.",
+  "The Bybee Lakes area moves from Faubion to Astor K–8, and from Jefferson to Roosevelt for high school.": "Khu vực Bybee Lakes chuyển từ Faubion sang Astor K–8, và từ Jefferson sang Roosevelt cho trung học phổ thông.",
+  "In fall 2027, Beverly Cleary’s K–5 students join Irvington in the Irvington building while Beverly Cleary gets earthquake upgrades. In fall 2028, the combined school moves to the Beverly Cleary building. Irvington’s middle school area goes to Beaumont.": "Mùa thu 2027, học sinh K–5 của Beverly Cleary học chung với Irvington tại tòa nhà Irvington trong khi tòa nhà Beverly Cleary được gia cố chống động đất. Mùa thu 2028, trường gộp chuyển về tòa nhà Beverly Cleary. Khu vực trung học cơ sở của Irvington chuyển sang Beaumont.",
+  "Rigler becomes a whole-school Spanish immersion school. Its neighborhood K–5 students go to Scott.": "Rigler trở thành trường song ngữ tiếng Tây Ban Nha toàn trường. Học sinh K–5 trong khu phố của trường chuyển đến Scott.",
+  "Students north of E. Burnside St. go to Sunnyside. The rest go to Abernethy.": "Học sinh ở phía bắc đường E. Burnside St. chuyển đến Sunnyside. Số còn lại chuyển đến Abernethy.",
+  "Sunnyside keeps its environmental focus. It becomes K–5 and still takes some students by lottery.": "Sunnyside giữ chương trình chuyên về môi trường. Trường trở thành K–5 và vẫn nhận một số học sinh qua bốc thăm.",
+  "Students from the Atkinson and Creston areas go to Kellogg for middle school, starting with 6th grade.": "Học sinh khu vực Atkinson và Creston học trung học cơ sở tại Kellogg, bắt đầu từ lớp 6.",
+  "Lent becomes a whole-school Spanish immersion school. PPS’s map moves Lent’s neighborhood area to Kelly for K–5 and to Brentwood for middle school.": "Lent trở thành trường song ngữ tiếng Tây Ban Nha toàn trường. Bản đồ của PPS chuyển khu phố của Lent sang Kelly cho K–5 và sang Brentwood cho trung học cơ sở.",
+  "Duniway’s area west of McLoughlin Blvd. goes to Llewellyn.": "Phần khu vực của Duniway ở phía tây McLoughlin Blvd. chuyển sang Llewellyn.",
+  "Sunnyside’s area and part of Woodstock’s go to Cleveland for high school instead of Franklin.": "Khu vực của Sunnyside và một phần khu vực của Woodstock học trung học phổ thông tại Cleveland thay vì Franklin.",
+  "Whitman’s area goes to Franklin for high school instead of Cleveland.": "Khu vực của Whitman học trung học phổ thông tại Franklin thay vì Cleveland.",
+  "MLC becomes K–8. Its 9–12 students can go to Alliance High School, a focus option, or their neighborhood high school.": "MLC trở thành K–8. Học sinh lớp 9–12 của trường có thể học tại Alliance High School, một chương trình đặc biệt, hoặc trường trung học phổ thông trong khu phố.",
+  "Sellwood, James John, Maplewood and Stephenson stay open. Scenario A or B would have closed them.": "Sellwood, James John, Maplewood và Stephenson tiếp tục mở cửa. Phương án A hoặc B đã đề xuất đóng các trường này.",
+  "Skyline students keep going to Lincoln for high school.": "Học sinh Skyline tiếp tục học trung học phổ thông tại Lincoln.",
+  "MLK Jr. keeps its Mandarin immersion program.": "MLK Jr. giữ chương trình song ngữ tiếng Quan Thoại.",
 }
 
 const programs = {

@@ -28,7 +28,7 @@ const en = {
   mapLabel: 'Map of attendance boundaries. Click to see the schools for a place.',
 
   howToTitle: 'How to use this map',
-  howTo1: 'Pick a scenario: Status quo, Scenario A or Scenario B.',
+  howTo1: 'Pick a plan: Status quo, Scenario A, Scenario B or the Recommendation.',
   howTo2: 'Pick grades: K–5, 6–8 or 9–12.',
   howTo3: 'Type your address or click the map. You will see your schools in each scenario.',
 
@@ -39,7 +39,7 @@ const en = {
   'scenarioShort.sq': 'Status quo',
   'scenarioShort.a': 'Scen. A',
   'scenarioShort.b': 'Scen. B',
-  scenarioHint: 'Status quo means no change. Scenarios A and B are two plans from PPS. They are not final.',
+  scenarioHint: 'Status quo means no change. Scenarios A and B were PPS’s first two plans. The Recommendation is the superintendent’s final plan. The school board votes on it December 15.',
   gradesLabel: 'Grades',
 
   compareToggle: 'Show today’s lines on top (dotted)',
@@ -75,7 +75,7 @@ const en = {
   lookupTitle: 'Schools at this spot',
   lookupChanged: 'A yellow box means the school is different from today.',
   lookupNear: '* This spot is on a boundary line, so we show the closest area. Please check with PPS.',
-  lookupChooseScenario: 'Pick Scenario A or B to see what changes for these schools.',
+  lookupChooseScenario: 'Pick a scenario or the Recommendation to see what changes for these schools.',
   lookupNotesTitle: ({ scenario }) => `What this means in ${scenario}`,
   cellOverlap: 'Overlapping areas',
   cellOutside: 'Outside the district',
@@ -106,12 +106,12 @@ const en = {
   dliNote: 'Oregon law says elementary students who live more than 1 mile from school get a school bus. The circles use straight-line distance, so real walking distance is longer. The circles show places, not numbers of students. PPS does not share where immersion students live. An older PPS note says immersion buses outside a school’s own area are only for native Spanish speakers. Bridger’s Spanish immersion moved to Lent in fall 2023.',
 
   timelineTitle: 'What happens next',
-  timeline1: [ 'October 6, 2026:', 'PPS shows the scenarios to the school board.' ],
-  timeline2: [ 'October–November:', 'Families and the community give feedback.' ],
-  timeline3: [ 'Mid-November:', 'The superintendent picks one plan to recommend.' ],
-  timeline4: [ 'December:', 'The school board votes in a public meeting.' ],
-  timeline5: [ 'Fall 2027:', 'Changes start in the 2027–28 school year.' ],
-  timelineNote: 'These are plans, not decisions. PPS is still planning buses, staff and support for students who move.',
+  timeline1: ['October 6, 2026:', 'PPS showed Scenarios A and B to the school board.'],
+  timeline2: ['November 13:', 'The superintendent released her recommendation.'],
+  timeline3: ['November 17 – December 3:', 'The school board discusses it. Listening sessions at Franklin High School (Nov. 19) and Grant High School (Dec. 3). Information session at McDaniel High School (Nov. 21).'],
+  timeline4: ['December 15:', 'The school board votes.'],
+  timeline5: ['Fall 2027:', 'The first changes start.'],
+  timelineNote: 'Nothing is final until the board votes. PPS is still planning buses, staff and support for students who move.',
   feedbackTitle: 'Tell PPS what you think',
   feedbackEmail: 'Email',
   feedbackRsvp: 'Sign up for a community event',
@@ -149,6 +149,18 @@ const en = {
     `${before} is not closing. On PPS’s ${scenario} map, ${before} and ${after} are inside one boundary. PPS has not said which school would serve ${before}’s current area. Please ask PPS at Rightsizing@pps.net.`,
   noteNoArea: ({ before, after, scenario, as }) =>
     `${before} is not closing. It stays open${as}. On the ${scenario} map it has no neighborhood area of its own, so this spot goes to ${after}.`,
+  'scenario.r': 'Recommendation',
+  'scenarioShort.r': 'Recommended',
+  changesSummaryRec: ({ closures, first, second, moving, share, sqShare }) =>
+    `${closures} schools close: ${first} in fall 2027 and ${second} in fall 2028. About ${moving} of K–8 students change schools, counting students whose program moves. PPS expects that by 2031–32, ${share} of elementary schools will have at least 360 students (with no change: ${sqShare}).`,
+  groupYear: ({ year }) => `Starting fall ${year}`,
+  groupKept: 'Changed after community feedback',
+  changesSourceRec: 'From the superintendent’s recommendation memo to the school board, November 12, 2026.',
+  fromFall: ({ year, text }) => `Starting fall ${year}: ${text}`,
+  timeline6: ['Fall 2028:', 'The rest of the changes happen.'],
+  sourceRecMemo: 'Superintendent’s recommendation memo (PDF)',
+  sourceRecFinder: 'PPS Rightsizing School Finder (map with the Recommendation’s boundaries)',
+  methodRec: 'The Recommendation’s boundaries come from PPS’s own map data (the Rightsizing School Finder). Where that data leaves an area out, the area keeps today’s school.',
   noteNoAreaAs: ({ langs }) => ` as a ${langs} immersion school`,
 }
 
@@ -163,7 +175,7 @@ const es = {
   mapLabel: 'Mapa de las zonas de asistencia. Haga clic para ver las escuelas de un lugar.',
 
   howToTitle: 'Cómo usar este mapa',
-  howTo1: 'Elija un escenario: Sin cambios, Escenario A o Escenario B.',
+  howTo1: 'Elija un plan: Sin cambios, Escenario A, Escenario B o la Recomendación.',
   howTo2: 'Elija los grados: K–5, 6–8 o 9–12.',
   howTo3: 'Escriba su dirección o haga clic en el mapa. Verá sus escuelas en cada escenario.',
 
@@ -174,7 +186,7 @@ const es = {
   'scenarioShort.sq': 'Sin cambios',
   'scenarioShort.a': 'Esc. A',
   'scenarioShort.b': 'Esc. B',
-  scenarioHint: 'Portland Public Schools (PPS, el distrito escolar público de Portland) propone dos planes: los escenarios A y B. “Sin cambios” muestra cómo es hoy. Nada es final.',
+  scenarioHint: '“Sin cambios” muestra cómo es hoy. Los escenarios A y B fueron los dos primeros planes de Portland Public Schools (PPS, el distrito escolar público de Portland). La Recomendación es el plan final de la superintendente. La Junta Escolar vota el 15 de diciembre.',
   gradesLabel: 'Grados',
 
   compareToggle: 'Mostrar las líneas de hoy encima (punteadas)',
@@ -210,7 +222,7 @@ const es = {
   lookupTitle: 'Escuelas en este lugar',
   lookupChanged: 'Un recuadro amarillo indica que la escuela es diferente a la de hoy.',
   lookupNear: '* Este lugar está sobre una línea de límite, así que mostramos la zona más cercana. Por favor, consulte con PPS.',
-  lookupChooseScenario: 'Elija el escenario A o B para ver qué cambia en estas escuelas.',
+  lookupChooseScenario: 'Elija un escenario o la Recomendación para ver qué cambia en estas escuelas.',
   lookupNotesTitle: ({ scenario }) => `Qué significa en el ${scenario}`,
   cellOverlap: 'Zonas superpuestas',
   cellOutside: 'Fuera del distrito',
@@ -241,12 +253,12 @@ const es = {
   dliNote: 'La ley de Oregón dice que los estudiantes de primaria que viven a más de 1 milla de la escuela reciben autobús escolar. Los círculos usan distancia en línea recta, así que la distancia real a pie es mayor. Los círculos muestran lugares, no cantidades de estudiantes. PPS no publica dónde viven los estudiantes de inmersión. Una nota anterior de PPS dice que los autobuses de inmersión fuera de la zona de la escuela son solo para hablantes nativos de español. La inmersión en español de Bridger se mudó a Lent en el otoño de 2023.',
 
   timelineTitle: 'Qué pasa después',
-  timeline1: [ '6 de octubre de 2026:', 'PPS presenta los escenarios a la Junta Escolar.' ],
-  timeline2: [ 'Octubre y noviembre:', 'Las familias y la comunidad dan su opinión.' ],
-  timeline3: [ 'Mediados de noviembre:', 'La superintendente elige un plan para recomendar.' ],
-  timeline4: [ 'Diciembre:', 'La Junta Escolar vota en una reunión pública.' ],
-  timeline5: [ 'Otoño de 2027:', 'Los cambios empiezan en el año escolar 2027–28.' ],
-  timelineNote: 'Son planes, no decisiones. PPS todavía planifica los autobuses, el personal y el apoyo para los estudiantes que cambien de escuela.',
+  timeline1: ['6 de octubre de 2026:', 'PPS presentó los escenarios A y B a la Junta Escolar.'],
+  timeline2: ['13 de noviembre:', 'La superintendente publicó su recomendación.'],
+  timeline3: ['Del 17 de noviembre al 3 de diciembre:', 'La Junta Escolar la analiza. Sesiones para escuchar a la comunidad en Franklin High School (19 de nov.) y Grant High School (3 de dic.). Sesión informativa en McDaniel High School (21 de nov.).'],
+  timeline4: ['15 de diciembre:', 'La Junta Escolar vota.'],
+  timeline5: ['Otoño de 2027:', 'Empiezan los primeros cambios.'],
+  timelineNote: 'Nada es final hasta que vote la Junta. PPS todavía planifica los autobuses, el personal y el apoyo para los estudiantes que cambien de escuela.',
   feedbackTitle: 'Dígale a PPS lo que piensa',
   feedbackEmail: 'Escriba a',
   feedbackRsvp: 'Inscríbase en un evento comunitario',
@@ -282,6 +294,18 @@ const es = {
     `${before} no cierra. En el mapa del ${scenario} de PPS, ${before} y ${after} están dentro de un mismo límite. PPS no ha dicho qué escuela atendería la zona actual de ${before}. Por favor, pregunte a PPS en Rightsizing@pps.net.`,
   noteNoArea: ({ before, after, scenario, as }) =>
     `${before} no cierra. Sigue abierta${as}. En el mapa del ${scenario} no tiene una zona del vecindario propia, así que este lugar pasa a ${after}.`,
+  'scenario.r': 'Recomendación',
+  'scenarioShort.r': 'Recomend.',
+  changesSummaryRec: ({ closures, first, second, moving, share, sqShare }) =>
+    `Cierran ${closures} escuelas: ${first} en el otoño de 2027 y ${second} en el otoño de 2028. Cerca del ${moving} de los estudiantes de K–8 cambia de escuela, contando a quienes cambian porque su programa se muda. PPS calcula que para 2031–32 el ${share} de las escuelas primarias tendrá al menos 360 estudiantes (sin cambios: ${sqShare}).`,
+  groupYear: ({ year }) => `Desde el otoño de ${year}`,
+  groupKept: 'Cambios hechos después de escuchar a la comunidad',
+  changesSourceRec: 'Según el memorando de la superintendente a la Junta Escolar con su recomendación, del 12 de noviembre de 2026.',
+  fromFall: ({ year, text }) => `Desde el otoño de ${year}: ${text}`,
+  timeline6: ['Otoño de 2028:', 'Se hacen los demás cambios.'],
+  sourceRecMemo: 'Memorando con la recomendación de la superintendente (PDF, en inglés)',
+  sourceRecFinder: 'Rightsizing School Finder de PPS (mapa con los límites de la Recomendación; en inglés)',
+  methodRec: 'Los límites de la Recomendación vienen de los datos de mapas de PPS (el Rightsizing School Finder). Donde esos datos no incluyen una zona, la zona mantiene su escuela de hoy.',
   noteNoAreaAs: ({ langs }) => ` como escuela de inmersión en ${langs}`,
 }
 

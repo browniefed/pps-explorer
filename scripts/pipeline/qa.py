@@ -8,7 +8,7 @@ from shapely.ops import transform
 eq = Transformer.from_crs(4326, 6933, always_xy=True)
 sqmi = lambda g: transform(lambda x, y, z=None: eq.transform(x, y), g).area / 2589988
 d = sys.argv[1]
-for sc in ("sq", "a", "b"):
+for sc in ("sq", "a", "b", "r"):
     district = unary_union([shape(f["geometry"]) for f in json.load(open(f"{d}/{sc}_912.geojson"))["features"]])
     for band in ("k5", "68", "912"):
         fs = json.load(open(f"{d}/{sc}_{band}.geojson"))["features"]

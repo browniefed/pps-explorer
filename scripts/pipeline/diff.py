@@ -2,7 +2,7 @@
 
 Usage: python -I diff.py <data_dir> [water.geojson]
 
-Writes <data_dir>/{a,b}_{k5,68,912}_changed.geojson: polygons where the scenario assigns a different
+Writes <data_dir>/{a,b,r}_{k5,68,912}_changed.geojson: polygons where the scenario assigns a different
 school than status quo, with `from` and `to` school names. Schools are compared by name without the
 level suffix, so "Faubion K-8" -> "Faubion Elementary" (a grade change, not a move) doesn't count.
 The status quo and scenario maps trace the same lines from different PDFs, so shared boundaries can
@@ -19,6 +19,9 @@ SLIVER = 0.00012   # degrees (~10 m): erode then dilate to drop thin slivers alo
 MIN_AREA = 4e-7    # degrees^2 (~3,500 m2): ignore crumbs left after that
 SQ_MI = 2.59e6 / (111_100 * 77_900)  # one square mile in degrees^2 at Portland's latitude
 SURE = 0.1 * SQ_MI  # changes this big are kept on the map's word alone
+# The recommendation comes from PPS's GIS layer while status quo is traced from a PDF, so shared lines
+# differ by more than a PDF-to-PDF trace; no real change in its list is smaller than half a square mile.
+GIS_MIN = {"r": 0.02 * SQ_MI}
 
 # Schools the district-wide comparison (Oct 4, 2026) lists under boundary changes or closures. A small
 # change area whose two schools are both missing here is a tracing difference between the PDFs (e.g.
@@ -36,6 +39,13 @@ LISTED = {
             Lincoln McDaniel Mt-Tabor Ockley-Green Rieke Gray Roosevelt Rosa-Parks Sitton Sunnyside-Environmental
             Whitman
             Beach Buckman Creston Irvington James-John Maplewood Marysville Peninsula Sabin Sellwood Woodmere""",
+    # Superintendent's Recommendation (Nov 13, 2026): every school in the GIS layer's moving areas
+    # and the memo's region tables (pages 29-41)
+    "r": """Abernethy Arleta Astor Atkinson Beaumont Beverly-Cleary Brentwood Chief-Joseph Cleveland MLK-Jr Duniway
+            Faubion Franklin George Harriet-Tubman Harrison-Park Hosford Jefferson Kellogg Kelly Lent Llewellyn
+            McDaniel Mt-Tabor Ockley-Green Rigler Roosevelt Rosa-Parks Scott Sunnyside-Environmental Whitman
+            Bridger-Creative-Science César-Chávez Laurelhurst Vernon
+            Beach Buckman Creston Irvington Lewis Marysville Peninsula Rose-City-Park Sabin Woodmere""",
 }
 LISTED = {k: {w.replace("-", " ") for w in v.split()} for k, v in LISTED.items()}
 
@@ -66,7 +76,7 @@ def main(data_dir, water_path=None):
     water = shape(json.load(open(water_path))["geometry"]).buffer(0) if water_path else None
     for band in ("k5", "68", "912"):
         sq = load(f"{data_dir}/sq_{band}.geojson")
-        for sc in ("a", "b"):
+        for sc in ("a", "b", "r"):
             feats = []
             for to_name, to_geom, unclear in load(f"{data_dir}/{sc}_{band}.geojson"):
                 for from_name, from_geom, _ in sq:
@@ -83,6 +93,9 @@ def main(data_dir, water_path=None):
                     if not parts:
                         continue
                     g = unary_union(parts).simplify(0.00002, preserve_topology=True)
+                    if g.area < GIS_MIN.get(sc, 0):
+                        print(f"   skip {sc}_{band} {from_name} -> {to_name}: {g.area / SQ_MI:.3f} sq mi, GIS and traced lines differ")
+                        continue
                     if g.area < SURE and not (listed(sc, from_name) or listed(sc, to_name)):
                         print(f"   skip {sc}_{band} {from_name} -> {to_name}: {g.area / SQ_MI:.3f} sq mi, neither school listed")
                         continue
